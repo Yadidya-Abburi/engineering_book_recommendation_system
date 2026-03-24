@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+.venv
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Large generated model files (regenerate with: python scripts/train_model.py)
+models/cosine_sim_matrix.npy
+models/tfidf_vectorizer.pkl
+
+# Generated outputs (regenerate with scripts)
+outputs/books_clean.csv
+outputs/top_books.csv
+outputs/recommendations.json
+outputs/plots/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# app/index.html is intentionally tracked (distributable self-contained app)
+# Rebuild it with: python scripts/build_app.py --skip-covers
