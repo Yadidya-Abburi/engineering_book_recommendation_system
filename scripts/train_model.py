@@ -21,6 +21,7 @@ import os
 import subprocess
 import sys
 import time
+import argparse
 
 import joblib
 import numpy as np
@@ -40,11 +41,15 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-def load_data() -> pd.DataFrame:
+def load_data(skip_enrichment: bool = False) -> pd.DataFrame:
     if not os.path.exists(PATHS.CLEAN_CSV):
         log.info("Clean CSV not found — running preprocess.py first…")
+        cmd = [sys.executable, os.path.join(PATHS.ROOT, "scripts", "preprocess.py")]
+        if skip_enrichment:
+            cmd.append("--skip-enrichment")
+            log.info("  Forwarding --skip-enrichment to preprocess.py")
         result = subprocess.run(
-            [sys.executable, os.path.join(PATHS.ROOT, "scripts", "preprocess.py")],
+            cmd,
             check=False,
         )
         if result.returncode != 0:
@@ -134,7 +139,7 @@ def extract_top_and_recs(df: pd.DataFrame, sim: np.ndarray):
     """
     top = df.nlargest(MODEL.TOP_N, "score").copy().reset_index()
     top["desc_short"] = top["description"].str.strip().str[:MODEL.DESC_SHORT_LEN]
-    top["year"]       = top["year"].astype(int)
+    top["year"] = pd.to_numeric(top["year"], errors='coerce').fillna(0).astype(int)
     top["pages"]      = top["pages"].astype(int)
     top["title"]      = top["title"].str.strip()
 
@@ -231,13 +236,24 @@ def save_artefacts(vectorizer, sim_matrix, top_books, recs):
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Train recommendation model")
+    parser.add_argument(
+        "--skip-enrichment",
+        action="store_true",
+        help=(
+            "If outputs/books_clean.csv is missing and preprocess auto-runs, "
+            "skip Google Books description enrichment for a faster run"
+        ),
+    )
+    args = parser.parse_args()
+
     log.info("=" * 58)
     log.info("  Bookify – Training the Recommendation Model")
     log.info("=" * 58)
 
     try:
         log.info("Step 1/5  Loading data…")
-        df = load_data()
+        df = load_data(skip_enrichment=args.skip_enrichment)
         log.info("  %d books loaded", len(df))
 
         log.info("Step 2/5  TF-IDF vectorisation…")

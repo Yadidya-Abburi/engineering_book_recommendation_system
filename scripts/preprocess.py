@@ -257,6 +257,9 @@ def validate(df: pd.DataFrame) -> bool:
 
 # ── Main pipeline ──────────────────────────────────────────────────────────
 def main() -> int:
+    if os.path.exists(PATHS.CLEAN_CSV):
+        log.info("✅ Clean data already exists. Skipping enrichment to save time.")
+    return 0
     parser = argparse.ArgumentParser(description="Bookify preprocessing pipeline")
     parser.add_argument("--skip-enrichment", action="store_true",
                         help="Skip Google Books API description enrichment (~13 min)")
