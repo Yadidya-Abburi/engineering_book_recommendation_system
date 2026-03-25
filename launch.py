@@ -1,25 +1,17 @@
 import os
-import subprocess
 import sys
-
-def launch():
-    print("🚀 Initializing Engineering Book Recommendation System...")
-    
-    # Path to your main app file
-    # Ensure this matches the file name inside your /app folder
-    app_path = os.path.join("app", "app.py") 
-
-    if not os.path.exists(app_path):
-        print(f"❌ Error: Could not find {app_path}")
-        return
-
-    try:
-        # This command starts the Streamlit server properly
-        subprocess.run(["streamlit", "run", app_path])
-    except KeyboardInterrupt:
-        print("\n👋 System stopped.")
-    except Exception as e:
-        print(f"❌ An error occurred: {e}")
+import subprocess
 
 if __name__ == "__main__":
-    launch()
+    # Point to the new filename
+    app_file = os.path.join("app", "app.py")
+
+    if not os.path.exists(app_file):
+        print(f"❌ Error: Cannot find {app_file}")
+        sys.exit(1)
+
+    print("🚀 Launching Bookify System...")
+    print("💡 Tip: Make sure you ran scripts/train_model.py first!")
+    
+    # Execute the Flask app
+    subprocess.run([sys.executable, app_file])

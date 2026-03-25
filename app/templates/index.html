@@ -293,26 +293,43 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 </div>
 
 <script>
-// Remove the hardcoded BOOKS constant and add this:
+// --- DYNAMIC DATA LOADING ---
 let BOOKS = [];
 let RECS = {};
 
-// This function fetches the REAL data from your Python backend
+// 1. Function to fetch data from your Flask Backend
 async function startApp() {
-    try {
-        const response = await fetch('/api/books');
-        BOOKS = await response.json();
-        
-        // Initialize the UI with real data
-        buildSB(); 
-        setSrt('score'); 
-        render();
-    } catch (error) {
-        console.error("Failed to load books from Python API", error);
+  console.log("📡 Connecting to Bookify Engine...");
+  try {
+    // Fetch the main book list (from top_books.csv)
+    const resBooks = await fetch('/api/books');
+    BOOKS = await resBooks.json();
+
+    // Fetch the similarity mappings (from recs.json)
+    const resRecs = await fetch('/api/recs');
+    RECS = await resRecs.json();
+
+    if (BOOKS.length === 0) {
+      document.getElementById('browse').innerHTML = 
+        '<div class="nores">⚠️ Library empty. Please run: <br><code>python scripts/train_model.py</code></div>';
+      return;
     }
+
+    console.log("✅ Real-time data loaded. Initializing UI...");
+    
+    // 2. Initialize the UI functions
+    buildSB(); 
+    setSrt('score'); 
+    render();
+
+  } catch (error) {
+    console.error("❌ Backend Connection Failed:", error);
+    document.getElementById('browse').innerHTML = 
+      '<div class="nores">❌ Could not connect to the Python server.</div>';
+  }
 }
 
-// Start the fetch process
+// 3. Start the process
 startApp();
 // ── category maps ────────────────────────────────────────────────────────
 const CC={'AI/ML':'cai','Programming':'cpr','Security':'cse','Cloud/DevOps':'ccl',
@@ -754,9 +771,10 @@ document.getElementById('srch').addEventListener('input',e=>{
   q=e.target.value.trim();clearTimeout(dt);dt=setTimeout(render,180);
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDP();});
-
 // ── init ─────────────────────────────────────────────────────────────────
-buildSB(); setSrt('score'); render();
+// We no longer call buildSB() or render() here. 
+// startApp() (at the top of the script) calls them only AFTER the data is fetched.
+console.log("🚀 Application initialized. Waiting for data...");
 </script>
 </body>
 </html>
