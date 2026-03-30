@@ -259,19 +259,6 @@ Run: `pytest tests/ -v` — all 119 pass.
 | HTML / CSS / JS | — | Premium responsive web app |
 | Open Library API | — | Book cover images |
 
----
-
-## 🤝 5. Deployment Recommendations for Collaborators
-
-Your team can utilize the following workflow cleanly:
-
-- **Pull Code from Git:** Ensure all collaborators have the freshest commits reflecting the newly unlocked 3,233 dataset scale.
-- **Execute Clean Setup:** `python -m venv venv` and `pip install -r requirements.txt`.
-- **Execute ML Run:** `python scripts/preprocess.py --skip-enrichment` followed by `python scripts/train_model.py`.
-- **Boot Flask Server:** `python app/app.py`.
-
-The core architectural base is highly robust. To future-proof the application if the input data expands to 10,000+ rows, consider eventually migrating the frontend to intercept server-side pagination instead of pushing the complete JSON blobs, though current browsers navigate the 3,000 element UI list effortlessly.
-
 > **Python version**: tested on **3.10 – 3.14**.
 
 ---
