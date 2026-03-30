@@ -247,5 +247,5 @@ Run with coverage: `pytest tests/ --cov=scripts --cov-report=term-missing`
 ## 🔗 Repository
 
 ```
-github.com/yourname/bookify
+github.com/Yadidya-Abburi/bookify
 ```
