@@ -26,7 +26,6 @@ class PATHS:
     COSINE_NPY    = os.path.join(MODELS,  "cosine_sim_matrix.npy")
     TOP_BOOKS_CSV = os.path.join(OUTPUTS, "top_books.csv")
     RECS_JSON     = os.path.join(OUTPUTS, "recommendations.json")
-    APP_HTML      = os.path.join(APP,     "index.html")
 
 
 class MODEL:

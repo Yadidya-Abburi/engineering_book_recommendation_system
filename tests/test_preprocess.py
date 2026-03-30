@@ -521,6 +521,7 @@ class TestPreprocessMain(unittest.TestCase):
             mp.GOODREADS_CSV = "/nonexistent/file.csv"
             mp.GOOGLE_CSV    = "/nonexistent/file2.csv"
             mp.FINAL_CSV     = "/nonexistent/file3.csv"
+            mp.CLEAN_CSV     = "/nonexistent/clean.csv"
             mp.OUTPUTS       = "/tmp"
             result = main()
         self.assertEqual(result, 1)

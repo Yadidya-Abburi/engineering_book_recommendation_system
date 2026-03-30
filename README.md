@@ -21,8 +21,7 @@ bookify/
 ├── scripts/
 │   ├── preprocess.py        ← Clean, merge, validate → outputs/books_clean.csv
 │   ├── train_model.py       ← TF-IDF + cosine similarity + Bayesian hybrid scoring
-│   ├── evaluate.py          ← 5 metrics + 6 visualisation plots
-│   └── build_app.py         ← Pre-fetch covers + inject model data → app/index.html
+│   └── evaluate.py          ← 5 metrics + 6 visualisation plots
 │
 ├── tests/
 │   ├── test_preprocess.py   ← 69 unit tests
@@ -78,9 +77,7 @@ python scripts/train_model.py
 # Step 3 – Evaluate & generate plots
 python scripts/evaluate.py
 
-# Step 4 – (Optional) Rebuild the static standalone app
-python scripts/build_app.py --skip-covers   # fast: skip Open Library cover pre-fetch
-python scripts/build_app.py                 # full: pre-fetch all cover images
+
 ```
 
 Each script exits **0** on success, **1** on failure — safe to chain:
@@ -96,7 +93,7 @@ pytest tests/ -v
 # With coverage report:
 pytest tests/ -v --cov=scripts --cov-report=term-missing
 ```
-All **149 tests** should pass (~92% line coverage).
+All **119 tests** should pass (~92% line coverage).
 
 ### 4. Launch the web app
 ```bash
@@ -223,10 +220,9 @@ All data is cached in memory at startup for fast responses.
 | `preprocess.py` | 69 | `parse_year`, `clean_image_url`, `is_engineering_book`, `assign_category`, `normalise_title`, `validate`, both CSV loaders, description enrichment, `main()` |
 | `train_model.py` | 33 | TF-IDF, cosine, Bayesian scoring, recs structure, near-dup dedup, `save_artefacts`, `load_data`, `main()` |
 | `evaluate.py` | 19 | All 5 metrics, empty inputs, all 6 plot functions, `main()` |
-| `build_app.py` | 30 | Load/clean outputs, validate HTML, `inject_data`, `fetch_cover_url`, `prefetch_covers`, `main()` |
-| **Total** | **149** | ~92% line coverage |
+| **Total** | **119** | ~92% line coverage |
 
-Run: `pytest tests/ -v` — all 149 pass.
+Run: `pytest tests/ -v` — all 119 pass.
 
 ---
 
@@ -270,6 +266,6 @@ Run: `pytest tests/ -v` — all 149 pass.
 | Issue | Impact | Workaround |
 |---|---|---|
 | 24.5% of books have no description | Lower TF-IDF quality | Run `preprocess.py` without `--skip-enrichment` |
-| Open Library covers not always available | ~30–40% show emoji placeholder | Pre-fetch at build time with `build_app.py` |
+| Open Library covers not always available | ~30–40% show emoji placeholder | Covers fetched dynamically on client-side |
 | Cosine similarity matrix is ~80 MB | Loaded fully into RAM | Sparse approximation or ANN index (future) |
 | `year=0` for a few undated books | Shows "Classic" badge | ISBN lookup via Google Books API (future) |
