@@ -36,7 +36,7 @@ bookify/
 ├── outputs/
 │   ├── books_clean.csv          ← Merged, deduplicated, categorised dataset (~3,233 rows)
 │   ├── top_books.csv            ← Full processed corpus ready for the app (~3,233 rows)
-│   ├── recommendations.json     ← Top-5 recs per book (category-boosted, pool-restricted)
+│   ├── recommendations.json     ← Top-5 similar book recommendations per title (category-boosted)
 │   └── plots/                   ← 6 PNG charts from evaluate.py
 │
 ├── app/
@@ -105,12 +105,12 @@ pytest tests/ -v --cov=scripts --cov-report=term-missing
 ```
 All **119 tests** should pass (~92% line coverage).
 
-### 5. Explore the notebook
+### 6. Explore the notebook
 ```bash
 jupyter notebook notebooks/BookRecommender_EDA_and_Model.ipynb
 ```
-Run cells top-to-bottom after completing step 1–2 above
-(`outputs/books_clean.csv` must exist).
+Run cells top-to-bottom after completing **Step 3** (The Data Pipeline & ML Training).
+Ensure `outputs/books_clean.csv` exists before running the notebook.
 
 ---
 
@@ -137,7 +137,7 @@ SCORE.WEIGHT_POPULARITY = 0.40   # Fraction of score from log(ratings count)
 ### Pipeline overview
 
 ```
-Raw CSV  (merged Goodreads 2,375 + Google Books filtered 918 = 3,293 rows)
+Raw CSV  (merged Goodreads: 2,375 + Google Books: 918 = 3,293 rows)
    ↓
 Preprocessing
   · Clean fields · Fill nulls · Strip blocked CDN image URLs
@@ -158,9 +158,9 @@ Bayesian Hybrid Scoring
   score = 0.60×bayes_norm + 0.40×log(count)_norm
   Re-scaled within top-N so rank-1 = 1.0, rank-N ≈ 0.0
    ↓
-Top ~3233 books + top-5 similar books per title
+All ~3,233 books + top-5 similar books per title
   (category-boosted: same-category books get +0.15 similarity boost)
-  (recs restricted to top-500 pool so every "Similar Books" link works)
+  (recs are linked across the entire corpus)
 ```
 
 ### Category-Boosted Recommendations
@@ -192,14 +192,14 @@ All data is cached in memory at startup for fast responses.
 
 ## 📊 Datasets
 
-| | Goodreads | Google Books | Combined |
+| Metric | Goodreads | Google Books | Combined |
 |---|---|---|---|
-| Input rows | 2,375 | 918 (filtered) | 3,293 |
-| After exact dedup | — | — | 3,249 |
-| After fuzzy dedup | — | — | ~3,233 |
-| After domain filter | — | — | ~3,233 |
-| Has download link | 2,296 / 2,375 | 0 | 2,296 |
-| Has rating | 2,375 / 2,375 | 102 / 918 | — |
+| Input rows | 2,375 | 918 (English-only)| 3,293 |
+| After exact deduplication | — | — | 3,249 |
+| After fuzzy deduplication | — | — | ~3,233 |
+| After engineering domain filter| — | — | ~3,233 |
+| Has valid download link | 2,296 / 2,375 | 0 | 2,296 |
+| Has explicit user rating | 2,375 / 2,375 | 102 / 918 | — |
 
 ---
 
