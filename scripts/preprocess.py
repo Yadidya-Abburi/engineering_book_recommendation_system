@@ -149,6 +149,98 @@ def load_google(path: str) -> pd.DataFrame:
     return df[REQUIRED_COLS[:-1]]
 
 
+def load_merged(path: str) -> pd.DataFrame:
+    """Load the merged final_books.csv that combines Goodreads + Google Books data."""
+    log.info("Loading merged CSV: %s", path)
+    df = pd.read_csv(path)
+    # Drop unnamed columns (artifacts from CSV merging)
+    df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+    df = df.dropna(subset=["title"]).copy()
+    df["title"] = df["title"].str.strip()
+
+    # Language filter
+    if "language" in df.columns:
+        lang = df["language"].fillna("en").str.lower().str.strip()
+        # Only drop non-English rows that are Google-Books-only
+        gr_col = pd.to_numeric(df.get("goodreads_rating"), errors="coerce")
+        is_goodreads = gr_col.notna() & (gr_col > 0)
+        df = df[is_goodreads | (lang == "en")].reset_index(drop=True)
+
+    # ── Detect source per row ──
+    gr_rating = pd.to_numeric(df.get("goodreads_rating"), errors="coerce")
+    has_gr = gr_rating.notna() & (gr_rating > 0)
+
+    # Rating: prefer Goodreads, fall back to Google
+    gb_rating = pd.to_numeric(df.get("average_rating"), errors="coerce").fillna(0)
+    rating = gr_rating.fillna(0).where(has_gr, gb_rating)
+
+    # Ratings count
+    gr_count = pd.to_numeric(df.get("goodreads_ratings_count"), errors="coerce")
+    gb_count = pd.to_numeric(df.get("ratings_count"), errors="coerce")
+    ratings_count = gr_count.where(gr_count.notna() & (gr_count > 0), gb_count).fillna(0).astype(int)
+
+    # Description: prefer Goodreads 'desc', fall back to Google 'description'
+    gr_desc = df["desc"].fillna("") if "desc" in df.columns else pd.Series("", index=df.index)
+    gb_desc = df["description"].fillna("") if "description" in df.columns else pd.Series("", index=df.index)
+    description = gr_desc.where(gr_desc.str.strip() != "", gb_desc)
+
+    # Author
+    author = df["author"].fillna(
+        df["authors"] if "authors" in df.columns else "Unknown"
+    ).fillna("Unknown")
+
+    # Image: prefer 'image', fall back to 'thumbnail'
+    img = df.get("image", pd.Series("", index=df.index)).fillna("")
+    thumb = df.get("thumbnail", pd.Series("", index=df.index)).fillna("")
+    image = img.where(img.str.strip() != "", thumb).apply(clean_image_url)
+
+    # Year: prefer 'year', fall back to 'published_date'
+    yr = df["year"].apply(parse_year) if "year" in df.columns else pd.Series(0, index=df.index)
+    pub_yr = df["published_date"].apply(parse_year) if "published_date" in df.columns else pd.Series(0, index=df.index)
+    year = yr.where(yr > 0, pub_yr)
+
+    # Pages
+    pg = pd.to_numeric(df.get("pages"), errors="coerce")
+    pg2 = pd.to_numeric(df.get("page_count"), errors="coerce")
+    pages = pg.where(pg.notna() & (pg > 0), pg2).fillna(0).astype(int)
+
+    # Simple fields
+    publisher = df.get("publisher", pd.Series("Unknown", index=df.index)).fillna("Unknown")
+    download_link = df.get("download_link", pd.Series("", index=df.index)).fillna("").replace("Unknown", "")
+    file_info = df.get("file", pd.Series("", index=df.index)).fillna("").replace("Unknown", "")
+    price = pd.to_numeric(df.get("list_price"), errors="coerce").fillna(0.0)
+    currency = df.get("currency", pd.Series("USD", index=df.index)).fillna("USD").replace("Unknown", "USD")
+    preview_link = df.get("preview_link", pd.Series("", index=df.index)).fillna("").replace("Unknown", "").str.replace("http://", "https://", regex=False)
+    info_link = df.get("info_link", pd.Series("", index=df.index)).fillna("").replace("Unknown", "").str.replace("http://", "https://", regex=False)
+
+    # Source & Platform
+    source = has_gr.map({True: "Goodreads / Z-Library", False: "Google Books"})
+    platform = file_info.apply(lambda x: x.split(",")[0].strip() if x else "PDF")
+    platform = platform.where(has_gr, "Google Books")
+
+    result = pd.DataFrame({
+        "title": df["title"].values,
+        "author": author.values,
+        "publisher": publisher.values,
+        "year": year.values,
+        "pages": pages.values,
+        "rating": rating.values,
+        "ratings_count": ratings_count.values,
+        "description": description.values,
+        "image": image.values,
+        "download_link": download_link.values,
+        "file_info": file_info.values,
+        "price": price.values,
+        "currency": currency.values,
+        "preview_link": preview_link.values,
+        "info_link": info_link.values,
+        "source": source.values,
+        "platform": platform.values,
+    })
+    log.info("  Merged CSV: %d books loaded", len(result))
+    return result
+
+
 # ── FIX #5: Domain filter ──────────────────────────────────────────────────
 def is_engineering_book(title: str, description: str) -> bool:
     """Return False for books that clearly don't belong in an engineering corpus."""
@@ -270,17 +362,25 @@ def main() -> int:
     log.info("=" * 58)
 
     os.makedirs(PATHS.OUTPUTS, exist_ok=True)
-    for path in (PATHS.GOODREADS_CSV, PATHS.GOOGLE_CSV):
-        if not os.path.exists(path):
-            log.error("Data file not found: %s", path)
-            return 1
 
-    # ── 1. Load ────────────────────────────────────────────────────────────
-    df1 = load_goodreads(PATHS.GOODREADS_CSV)
-    df2 = load_google(PATHS.GOOGLE_CSV)
+    # ── 1. Load — support both split CSVs and merged CSV ───────────────────
+    has_split = os.path.exists(PATHS.GOODREADS_CSV) and os.path.exists(PATHS.GOOGLE_CSV)
+    has_merged = os.path.exists(PATHS.FINAL_CSV)
 
-    # ── 2. Merge & exact dedup ─────────────────────────────────────────────
-    df = pd.concat([df1, df2], ignore_index=True)
+    if not has_split and not has_merged:
+        log.error("No data files found. Expected either:")
+        log.error("  • %s AND %s", PATHS.GOODREADS_CSV, PATHS.GOOGLE_CSV)
+        log.error("  • %s", PATHS.FINAL_CSV)
+        return 1
+
+    if has_split:
+        df1 = load_goodreads(PATHS.GOODREADS_CSV)
+        df2 = load_google(PATHS.GOOGLE_CSV)
+        df = pd.concat([df1, df2], ignore_index=True)
+    else:
+        df = load_merged(PATHS.FINAL_CSV)
+
+    # ── 2. Exact dedup ────────────────────────────────────────────────────
     before_exact = len(df)
     df = df.drop_duplicates(subset=["title"], keep="first").reset_index(drop=True)
     log.info("Exact dedup: %d → %d (%d removed)",

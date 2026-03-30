@@ -20,12 +20,12 @@ class PATHS:
 
     GOODREADS_CSV = os.path.join(DATA,    "goodreads_engineering_books.csv")
     GOOGLE_CSV    = os.path.join(DATA,    "google_books_technical.csv")
+    FINAL_CSV     = os.path.join(DATA,    "final_books.csv")
     CLEAN_CSV     = os.path.join(OUTPUTS, "books_clean.csv")
     TFIDF_PKL     = os.path.join(MODELS,  "tfidf_vectorizer.pkl")
     COSINE_NPY    = os.path.join(MODELS,  "cosine_sim_matrix.npy")
     TOP_BOOKS_CSV = os.path.join(OUTPUTS, "top_books.csv")
     RECS_JSON     = os.path.join(OUTPUTS, "recommendations.json")
-    APP_HTML      = os.path.join(APP,     "index.html")
 
 
 class MODEL:
@@ -37,7 +37,7 @@ class MODEL:
     # FIX #1 — was 150, raised to 500 so that similar-book links can be
     # opened in the app. Previously 85% of "Similar Books" clicks silently
     # failed because the recommended book was outside the top-150 BOOKS array.
-    TOP_N = 500
+    TOP_N = 10000
 
     N_RECS              = 5
     DESC_SHORT_LEN      = 300

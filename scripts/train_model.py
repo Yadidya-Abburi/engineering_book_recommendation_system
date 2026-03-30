@@ -151,24 +151,24 @@ def extract_top_and_recs(df: pd.DataFrame, sim: np.ndarray):
         top["score"] = top["score"].round(4)
 
     # ── Near-duplicate deduplication within top-N ────────────────────────────
-    # TF-IDF + cosine can't distinguish "8051 Microcontroller" from "8051 MICROCONTROLLER"
-    # Remove the lower-scoring copy of any pair with normalised-title similarity > MODEL.NEAR_DUP_THRESHOLD
-    from difflib import SequenceMatcher as _SM
-    import re as _re
-    norms = top["title"].str.lower().str.replace(r"[^\w\s]", " ", regex=True).str.strip()
-    drop_idx: set[int] = set()
-    for _i in range(len(norms)):
-        for _j in range(_i + 1, len(norms)):
-            if _j in drop_idx:
-                continue
-            if _SM(None, norms.iloc[_i], norms.iloc[_j]).ratio() > MODEL.NEAR_DUP_THRESHOLD:
-                keep = _i if top.iloc[_i]["score"] >= top.iloc[_j]["score"] else _j
-                drop = _j if keep == _i else _i
-                drop_idx.add(drop)
-                log.info("  Near-dup removed: '%s'", top.iloc[drop]["title"][:65])
-    if drop_idx:
-        top = top.drop(index=list(drop_idx)).reset_index(drop=True)
-        log.info("  Near-dup dedup: %d removed → %d books", len(drop_idx), len(top))
+    # Limit to small datasets because O(N^2) string matching is slow.
+    if len(top) <= 1000:
+        from difflib import SequenceMatcher as _SM
+        import re as _re
+        norms = top["title"].str.lower().str.replace(r"[^\w\s]", " ", regex=True).str.strip()
+        drop_idx: set[int] = set()
+        for _i in range(len(norms)):
+            for _j in range(_i + 1, len(norms)):
+                if _j in drop_idx:
+                    continue
+                if _SM(None, norms.iloc[_i], norms.iloc[_j]).ratio() > MODEL.NEAR_DUP_THRESHOLD:
+                    keep = _i if top.iloc[_i]["score"] >= top.iloc[_j]["score"] else _j
+                    drop = _j if keep == _i else _i
+                    drop_idx.add(drop)
+                    log.info("  Near-dup removed: '%s'", top.iloc[drop]["title"][:65])
+        if drop_idx:
+            top = top.drop(index=list(drop_idx)).reset_index(drop=True)
+            log.info("  Near-dup dedup: %d removed → %d books", len(drop_idx), len(top))
 
     rated = top[top["rating"] > 0]
     log.info("  Top %d books — avg rating: %.2f  score range: %.3f–%.3f  std: %.4f",
@@ -178,29 +178,37 @@ def extract_top_and_recs(df: pd.DataFrame, sim: np.ndarray):
 
     # Build recs — restricted to top-N pool so every link is openable in the UI
     top_index_set = set(top["index"].astype(int).tolist())
+    # Build a lookup: original df index → category
+    idx_to_cat = {}
+    for _, r in top.iterrows():
+        idx_to_cat[int(r["index"])] = r.get("category", "")
+
     # Build recs — exclude self (j==i) and exact duplicates (sim==1.0)
+    # Category boost: same-category books get +0.15 to their similarity score
+    # so topically relevant books are preferred over spurious cross-category matches.
+    CATEGORY_BOOST = 0.15
     recs: dict[str, list[dict]] = {}
     for _, row in top.iterrows():
         i     = int(row["index"])
         title = row["title"]
-        # FIX #1 (complete): restrict candidates to top-N indices only.
-        # Previously recs were drawn from the full 3,233-book corpus so
-        # clicking a similar book in the UI called openDP() on a title that
-        # wasn't in the BOOKS array -> silent blank panel.
-        scores = [
-            (j, float(s))
-            for j, s in enumerate(sim[i])
-            if j != i and float(s) < 1.0 and j in top_index_set
-        ]
+        i_cat = idx_to_cat.get(i, "")
+        scores = []
+        for j, s in enumerate(sim[i]):
+            s = float(s)
+            if j == i or s >= 1.0 or j not in top_index_set:
+                continue
+            j_cat = idx_to_cat.get(j, "")
+            boosted = s + (CATEGORY_BOOST if i_cat and j_cat and i_cat == j_cat else 0)
+            scores.append((j, boosted, s))  # (index, boosted_score, raw_sim)
         scores = sorted(scores, key=lambda x: x[1], reverse=True)[: MODEL.N_RECS]
         recs[title] = [
             {
                 "title"      : df.iloc[j]["title"].strip(),
                 "author"     : df.iloc[j]["author"],
                 "rating"     : round(float(df.iloc[j]["rating"]), 1),
-                "similarity" : round(s, 3),
+                "similarity" : round(raw_s, 3),
             }
-            for j, s in scores
+            for j, _, raw_s in scores
         ]
 
     remaining_self = sum(1 for t, rl in recs.items() for r in rl if r["title"] == t)

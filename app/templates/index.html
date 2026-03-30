@@ -3,147 +3,212 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Bookify – AI-powered engineering book discovery and recommendation system with 498+ curated technical books.">
 <title>Bookify – Engineering Book Discovery</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Figtree:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#121212;--bg2:#181818;--bg3:#232323;--bg4:#2a2a2a;
-  --sidebar:#000;--accent:#1db954;--accent2:#1ed760;
-  --text:#fff;--text2:#b3b3b3;--text3:#6a6a6a;--border:#2a2a2a;
-  --hover:#282828;--sw:242px;--font:'Figtree',sans-serif;--fd:'Syne',sans-serif;
+  --bg:#0b0b14;--bg2:#12121c;--bg3:#1a1a28;--bg4:#242436;
+  --sidebar:#0d0d18;--accent:#1db954;--accent2:#34d399;--accent-glow:rgba(29,185,84,0.12);
+  --purple:#8b5cf6;--blue:#3b82f6;--star:#fbbf24;
+  --text:#eeeef0;--text2:#9898a8;--text3:#5a5a6e;--border:rgba(255,255,255,0.06);
+  --glass:rgba(255,255,255,0.03);--glass2:rgba(255,255,255,0.06);
+  --sw:250px;--pw:520px;--radius:12px;--radius-sm:8px;
+  --font:'Inter',sans-serif;--fd:'Syne',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden}
-body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;flex-direction:column}
-.app{display:flex;flex:1;overflow:hidden;height:100vh}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px}
+.app{display:flex;height:100vh;overflow:hidden}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99;backdrop-filter:blur(4px)}
 
 /* ── SIDEBAR ── */
-.sidebar{width:var(--sw);background:var(--sidebar);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;scrollbar-width:thin}
-.logo{padding:22px 20px 14px;font-family:var(--fd);font-size:20px;font-weight:800;color:var(--accent);display:flex;align-items:center;gap:8px}
-.logo span{color:#fff}
-.slbl{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;padding:10px 20px 5px}
-.sitem{display:flex;align-items:center;gap:12px;padding:9px 20px;cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:all .15s}
-.sitem:hover, .sitem.active{color:#fff}
-.sitem.active{background: rgba(255,255,255,0.05);}
-.sitem.active .sico{color:var(--accent)}
-.sico{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.sidebar{width:var(--sw);background:linear-gradient(180deg,rgba(18,18,30,0.95),rgba(11,11,20,0.98));backdrop-filter:blur(20px);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;scrollbar-width:none;z-index:100;transition:transform .3s ease}
+.sidebar::-webkit-scrollbar{display:none}
+.logo{padding:24px 20px 18px;font-family:var(--fd);font-size:22px;font-weight:800;display:flex;align-items:center;gap:10px}
+.logo .accent{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;padding:16px 20px 6px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 20px;cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:all .2s;border-radius:0;position:relative}
+.nav-item:hover{color:#fff;background:var(--glass2)}
+.nav-item.active{color:#fff;background:var(--glass2)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--accent);border-radius:0 3px 3px 0}
+.nav-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--bg4);color:var(--text3);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
+.cpill{display:flex;align-items:center;gap:10px;padding:8px 20px;cursor:pointer;color:var(--text2);font-size:12px;font-weight:500;transition:all .2s}
+.cpill:hover{color:#fff;background:var(--glass)}
+.cpill.active{color:#fff;background:var(--glass2);border-right:2px solid var(--accent)}
+.cdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cpill .nav-badge{font-size:9px;padding:1px 6px}
+.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);font-size:10px;color:var(--text3)}
+.sidebar-footer kbd{background:var(--bg4);padding:1px 5px;border-radius:3px;font-family:var(--font);font-size:9px;border:1px solid rgba(255,255,255,0.08)}
 
-.cpill{display:flex;align-items:center;gap:9px;padding:7px 20px;cursor:pointer;color:var(--text2);font-size:12px;font-weight:500}
-.cpill:hover, .cpill.active{color:#fff}
-.cpill.active{background: rgba(255,255,255,0.1); border-radius: 4px;}
-.cdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+/* ── TOPBAR ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.topbar{height:60px;display:flex;align-items:center;padding:0 24px;gap:14px;flex-shrink:0;z-index:10;position:relative;background:linear-gradient(180deg,rgba(20,20,40,0.5),transparent)}
+.hamburger{display:none;background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:6px}
+.sbar{flex:1;max-width:380px;position:relative}
+.sbar input{width:100%;padding:10px 16px 10px 40px;background:var(--glass2);border:1px solid var(--border);border-radius:24px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;transition:all .2s}
+.sbar input:focus{border-color:rgba(29,185,84,0.4);box-shadow:0 0 20px var(--accent-glow)}
+.sbar input::placeholder{color:var(--text3)}
+.sbar-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
+.sbar-kbd{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:var(--bg4);color:var(--text3);font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);pointer-events:none;font-family:var(--font)}
+.sort-btns{margin-left:auto;display:flex;gap:6px}
+.sbtn{padding:7px 14px;background:var(--glass2);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .2s}
+.sbtn:hover{border-color:rgba(255,255,255,0.15);color:#fff}
+.sbtn.active{background:var(--accent);border-color:var(--accent);color:#000}
 
-/* ── MAIN AREA ── */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,#1a1a2e 0%,var(--bg) 280px)}
-.topbar{height:58px;display:flex;align-items:center;padding:0 22px;gap:13px;flex-shrink:0;z-index:10}
-.sbar{flex:1;max-width:360px;position:relative}
-.sbar input{width:100%;padding:9px 14px 9px 38px;background:var(--bg3);border:none;border-radius:22px;color:var(--text);font-size:13px;outline:none}
-.sico2{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
-.tbr{margin-left:auto;display:flex;gap:7px}
-.sbtn{padding:6px 13px;background:var(--bg3);border:none;border-radius:18px;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer}
-.sbtn.active{background:var(--accent);color:#000}
+/* ── CONTENT ── */
+.carea{flex:1;display:flex;overflow:hidden}
+.browse{flex:1;overflow-y:auto;padding:0 24px 60px;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent}
+.browse::-webkit-scrollbar{width:6px}
+.browse::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+.ptitle{font-family:var(--fd);font-size:28px;font-weight:800;margin-bottom:4px;padding-top:8px;animation:fadeUp .4s ease}
+.psub{color:var(--text2);font-size:13px;margin-bottom:24px;animation:fadeUp .4s ease .05s both}
+.sec{margin-bottom:32px;animation:fadeUp .4s ease both}
+.sec:nth-child(3){animation-delay:.1s}.sec:nth-child(4){animation-delay:.15s}.sec:nth-child(5){animation-delay:.2s}
+.sect{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 
-/* ── CONTENT SCROLLING ── */
-.browse{flex:1;overflow-y:auto;padding:0 22px 40px;scrollbar-width:thin}
-.ptitle{font-family:var(--fd);font-size:26px;font-weight:800;margin-bottom:4px;padding-top:6px}
-.psub{color:var(--text2);font-size:13px;margin-bottom:22px}
-.sec{margin-bottom:30px}
-
-/* ── LAYOUT 1: HORIZONTAL SHELF (Home) ── */
-.shelf{display:flex;gap:13px;overflow-x:auto;padding-bottom:10px}
+/* ── SHELF (horizontal scroll) ── */
+.shelf{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;scroll-behavior:smooth}
 .shelf::-webkit-scrollbar{display:none}
-.shelf .bc { flex-shrink: 0; width: 148px; } /* Fixed width for horizontal scrolling */
+.shelf .bc{flex-shrink:0;width:155px}
 
-/* ── LAYOUT 2: MATRIX GRID (Search/Domains) ── */
-.matrix-grid {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 20px;
-  padding-top: 10px;
-}
-.matrix-grid .bc { 
-  width: 100% !important; /* Allow card to fill the grid cell */
-  flex-shrink: 1 !important; 
-}
+/* ── GRID ── */
+.matrix-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:18px;padding-top:8px;animation:fadeUp .3s ease}
 
 /* ── BOOK CARD ── */
-.bc{padding:13px;border-radius:10px;background:var(--bg2);cursor:pointer;transition:background .2s;position:relative}
-.bc:hover{background:var(--bg3)}
-.bc.sel{background:var(--bg3);outline:2px solid var(--accent);outline-offset:-1px}
-.bcov{width:100%; aspect-ratio:1/1; border-radius:6px;background:var(--bg4);margin-bottom:11px;position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.5)}
-.bcov img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s}
+.bc{padding:12px;border-radius:var(--radius);background:var(--bg2);cursor:pointer;transition:all .25s ease;position:relative;border:1px solid transparent}
+.bc:hover{transform:translateY(-4px);background:var(--bg3);border-color:var(--border);box-shadow:0 12px 40px rgba(0,0,0,0.3),0 0 30px var(--accent-glow)}
+.bc.sel{background:var(--bg3);border-color:var(--accent);box-shadow:0 0 25px var(--accent-glow)}
+.bcov{width:100%;aspect-ratio:1/1;border-radius:var(--radius-sm);background:var(--bg4);margin-bottom:10px;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+.bcov img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .5s ease}
 .bcov img.ok{opacity:1}
 .bshim{position:absolute;inset:0;background:linear-gradient(90deg,var(--bg4) 25%,var(--bg3) 50%,var(--bg4) 75%);background-size:200% 100%;animation:shim 1.6s infinite}
 @keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.bshim.gone{display:none}
 .bemo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:36px;opacity:0;transition:opacity .3s}
 .bemo.show{opacity:1}
+.fav-btn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);border:none;border-radius:50%;width:30px;height:30px;font-size:14px;cursor:pointer;opacity:0;transition:all .2s;z-index:2;display:flex;align-items:center;justify-content:center}
+.bc:hover .fav-btn,.fav-btn.active{opacity:1}
+.fav-btn.active{background:rgba(239,68,68,0.25)}
+.score-badge{position:absolute;bottom:8px;left:8px;background:rgba(29,185,84,0.9);color:#000;font-size:9px;font-weight:800;padding:3px 7px;border-radius:6px;letter-spacing:0.3px}
 .btit{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
-.baut{font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.brat{display:flex;align-items:center;gap:4px;margin-top:5px}
-.bstar{color:#f0c040;font-size:10px}
+.baut{font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px}
+.brat{display:flex;align-items:center;gap:5px}
+.stars{color:var(--star);font-size:10px;letter-spacing:1px}
+.stars .empty{color:var(--text3)}
 .brn{font-size:10px;color:var(--text3)}
 
-/* ── DETAIL PANEL (EXTENSION TAB) ── */
-.dp{width:560px;background:#1e1e1e;border-left:1px solid #333;display:flex;flex-direction:column;flex-shrink:0;transition:width .25s;overflow:hidden}
-.dp.closed{width:0;border:none}
-.vtop{background:#252526;border-bottom:1px solid #3c3c3c;height:35px;display:flex;align-items:center;justify-content:space-between;padding:0 14px}
-.vbc{display:flex;align-items:center;gap:6px;font-size:12px;color:#777}
-.vbc b{color:#ccc;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.vcls{background:none;border:none;color:#777;cursor:pointer;font-size:14px;padding:4px 6px;border-radius:4px}
-.vcls:hover{background:#3c3c3c;color:#fff}
-.dpi{flex:1;overflow-y:auto;}
-.vhero{position:relative;overflow:hidden;min-height:260px}
-.vbg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(35px) brightness(0.35);transform:scale(1.1);z-index:0}
-.vhero-inner{position:relative;z-index:1;padding:30px 25px; display:flex; gap:25px}
-.vcw{width:150px;height:210px;flex-shrink:0;border-radius:8px;overflow:hidden;background:#2d2d2d;position:relative;box-shadow:0 15px 45px rgba(0,0,0,.8)}
-.badge-row{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap}
-.badge{padding:3px 10px; border-radius:12px; background:rgba(255,255,255,0.08); font-size:10px; font-weight:700; border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.7)}
-.vact-bar{padding:15px 25px; background:#252526; border-bottom:1px solid #333; display:flex; align-items:center; gap:12px}
-.btn-dl{padding:10px 22px; background:var(--accent); border:none; border-radius:4px; color:#000; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none}
-.btn-dl:hover{background:var(--accent2)}
-.vtabs{display:flex;background:#252526;border-bottom:1px solid #3c3c3c}
+/* ── DETAIL PANEL ── */
+.dp{width:var(--pw);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:width .3s ease,opacity .3s;overflow:hidden}
+.dp.closed{width:0;border:none;opacity:0}
+.vtop{background:var(--bg3);border-bottom:1px solid var(--border);height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0}
+.vbc{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3)}
+.vbc b{color:var(--text2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vcls{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:4px 6px;border-radius:4px;transition:all .15s}
+.vcls:hover{background:var(--bg4);color:#fff}
+.dpi{flex:1;overflow-y:auto;scrollbar-width:thin}
+.vhero{position:relative;overflow:hidden;min-height:270px}
+.vbg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(40px) brightness(0.3) saturate(1.5);transform:scale(1.15);z-index:0}
+.vhero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(transparent,var(--bg2));z-index:1}
+.vhero-inner{position:relative;z-index:2;padding:32px 28px;display:flex;gap:28px}
+.vcw{width:155px;height:215px;flex-shrink:0;border-radius:var(--radius);overflow:hidden;background:var(--bg4);position:relative;box-shadow:0 20px 50px rgba(0,0,0,0.7)}
+.vact-bar{padding:16px 28px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.btn-primary{padding:10px 24px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:var(--radius-sm);color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px var(--accent-glow)}
+.btn-secondary{padding:9px 18px;border:1px solid var(--border);background:var(--glass2);color:var(--text2);border-radius:var(--radius-sm);text-decoration:none;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-secondary:hover{border-color:rgba(255,255,255,0.2);color:#fff}
+.badge-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.badge{padding:4px 12px;border-radius:20px;background:var(--glass2);font-size:10px;font-weight:700;border:1px solid var(--border);color:var(--text2);letter-spacing:0.3px}
+.vtabs{display:flex;background:var(--bg3);border-bottom:1px solid var(--border)}
 .vtab{padding:12px 20px;font-size:12px;font-weight:600;color:#fff;border-bottom:2px solid var(--accent)}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px}
+.meta-card{background:var(--bg3);padding:14px;border-radius:var(--radius-sm);border:1px solid var(--border)}
+.meta-card .label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px}
+.meta-card .value{font-size:13px;font-weight:500}
+.sim-card{display:flex;gap:12px;background:var(--bg3);padding:12px;border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;border:1px solid var(--border);transition:all .2s}
+.sim-card:hover{border-color:rgba(255,255,255,0.12);background:var(--bg4)}
 
-.nores{text-align:center;padding:60px 20px;color:var(--text2)}
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px}
+/* ── SKELETON ── */
+.skel-card{padding:12px;border-radius:var(--radius);background:var(--bg2)}
+.skel-cover{width:100%;aspect-ratio:1/1;border-radius:var(--radius-sm);background:linear-gradient(90deg,var(--bg4) 25%,var(--bg3) 50%,var(--bg4) 75%);background-size:200% 100%;animation:shim 1.6s infinite}
+.skel-line{height:10px;border-radius:4px;margin-top:8px;background:linear-gradient(90deg,var(--bg4) 25%,var(--bg3) 50%,var(--bg4) 75%);background-size:200% 100%;animation:shim 1.6s infinite}
+
+/* ── NO RESULTS ── */
+.nores{text-align:center;padding:80px 20px;color:var(--text2);font-size:15px}
+.nores .big{font-size:48px;margin-bottom:16px;display:block}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ── RESPONSIVE: TABLET ── */
+@media(max-width:1100px){
+  .dp{--pw:420px}
+}
+@media(max-width:1024px){
+  :root{--sw:220px}
+  .matrix-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:14px}
+}
+
+/* ── RESPONSIVE: MOBILE ── */
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);width:270px;z-index:100}
+  .sidebar.open{transform:translateX(0)}
+  .mobile-overlay.show{display:block}
+  .hamburger{display:block}
+  .sbar{max-width:none}
+  .sbar-kbd{display:none}
+  .sort-btns{display:none}
+  .matrix-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+  .shelf .bc{width:140px}
+  .dp{position:fixed;top:0;right:0;bottom:0;width:100%!important;z-index:200;transform:translateX(100%);transition:transform .3s ease;opacity:1!important}
+  .dp:not(.closed){transform:translateX(0)}
+  .dp.closed{transform:translateX(100%)}
+  .vhero-inner{flex-direction:column;align-items:center;text-align:center}
+  .ptitle{font-size:22px}
+}
 </style>
 </head>
 <body>
 <div class="app">
 
+<div class="mobile-overlay" id="mobileOverlay" onclick="closeMobile()"></div>
+
 <!-- SIDEBAR -->
-<nav class="sidebar">
-  <div class="logo">📚 <span>Bookify</span></div>
-  <div class="sitem active" id="homeBtn" onclick="showHome()"><span class="sico">🏠</span>Home</div>
-  <div class="sitem" onclick="focusSearch()"><span class="sico">🔍</span>Search</div>
-  <div class="slbl">Library</div>
-  <div class="sitem" id="nav_rating" onclick="setSrt('rating')"><span class="sico">⭐</span>Top Rated</div>
-  <div class="sitem" id="nav_popularity" onclick="setSrt('popularity')"><span class="sico">🔥</span>Most Popular</div>
-  <div class="sitem" id="nav_year" onclick="setSrt('year')"><span class="sico">🆕</span>Newest</div>
-  <div class="slbl">Domains</div>
+<nav class="sidebar" id="sidebar">
+  <div class="logo">📚 <span class="accent">Bookify</span></div>
+  <div class="nav-item active" id="homeBtn" onclick="showHome()"><span class="nav-icon">🏠</span>Home</div>
+  <div class="nav-item" id="searchBtn" onclick="focusSearch()"><span class="nav-icon">🔍</span>Search</div>
+  <div class="nav-label">Library</div>
+  <div class="nav-item" id="nav_rating" onclick="setSrt('rating')"><span class="nav-icon">⭐</span>Top Rated</div>
+  <div class="nav-item" id="nav_popularity" onclick="setSrt('popularity')"><span class="nav-icon">🔥</span>Most Popular</div>
+  <div class="nav-item" id="nav_year" onclick="setSrt('year')"><span class="nav-icon">🆕</span>Newest</div>
+  <div class="nav-item" id="nav_fav" onclick="showFavs()"><span class="nav-icon">❤️</span>Favorites<span class="nav-badge" id="favCount">0</span></div>
+  <div class="nav-label">Domains</div>
   <div id="sbCats"></div>
+  <div class="sidebar-footer">Press <kbd>/</kbd> to search · <kbd>Esc</kbd> to close</div>
 </nav>
 
 <!-- MAIN -->
 <div class="main">
   <div class="topbar">
+    <button class="hamburger" id="menuBtn" onclick="toggleMobile()">☰</button>
     <div class="sbar">
-      <span class="sico2">⌕</span>
+      <span class="sbar-icon">⌕</span>
       <input type="text" id="srch" placeholder="Search books, authors, topics…" autocomplete="off">
+      <span class="sbar-kbd">/</span>
     </div>
-    <div class="tbr">
+    <div class="sort-btns">
       <button class="sbtn active" id="sb_score" onclick="setSrt('score')">✦ Best Match</button>
       <button class="sbtn" id="sb_rating" onclick="setSrt('rating')">⭐ Rating</button>
       <button class="sbtn" id="sb_popularity" onclick="setSrt('popularity')">🔥 Popular</button>
     </div>
   </div>
   <div class="carea">
-    <div class="browse" id="browse">
-        <div class="nores">📡 Connecting to Bookify Engine...</div>
-    </div>
+    <div class="browse" id="browse"></div>
     <div class="dp closed" id="dp">
-      <div class="vtop"><div class="vbc">Extension › <b id="dpbc"></b></div><button class="vcls" onclick="closeDP()">✕</button></div>
+      <div class="vtop"><div class="vbc">📖 <b id="dpbc"></b></div><button class="vcls" onclick="closeDP()">✕</button></div>
       <div class="dpi" id="dpi"></div>
     </div>
   </div>
@@ -151,178 +216,256 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 </div>
 
 <script>
-let BOOKS = [];
-let RECS = {};
-let srt = 'score', cat = 'all', q = '', activeTitle = null;
+let BOOKS=[], RECS={};
+let srt='score', cat='all', q='', activeTitle=null, showFavsMode=false;
+let favorites = JSON.parse(localStorage.getItem('bookify_favs') || '[]');
 
 const CE={'AI/ML':'🤖','Programming':'💻','Security':'🔐','Cloud/DevOps':'☁️','Data Science':'📊','Databases':'🗄️','Electrical':'⚡','Mechanical':'⚙️','Software Eng':'🏗️','Networking':'🌐','General Engineering':'📐','Civil':'🏛️','Game/Graphics':'🎮'};
 const CCLR={'AI/ML':'#a78bfa','Programming':'#60a5fa','Security':'#f87171','Cloud/DevOps':'#34d399','Data Science':'#fb923c','Databases':'#f472b6','Electrical':'#fbbf24','Mechanical':'#94a3b8','Software Eng':'#c084fc','Networking':'#67e8f9','General Engineering':'#6a6a6a','Civil':'#a3b899','Game/Graphics':'#f9a8d4'};
 
-async function startApp() {
-  try {
-    const resBooks = await fetch('/api/books');
-    BOOKS = await resBooks.json();
-    const resRecs = await fetch('/api/recs');
-    RECS = await resRecs.json();
-    if (BOOKS.length > 0) { buildSB(); render(); }
-  } catch (error) {
-    document.getElementById('browse').innerHTML = '<div class="nores">❌ Connection failure. Check your Python terminal.</div>';
+// ── SKELETON ──
+function skeleton(){
+  const c=Array(12).fill(0).map(()=>`<div class="skel-card"><div class="skel-cover"></div><div class="skel-line" style="width:75%"></div><div class="skel-line" style="width:55%"></div></div>`).join('');
+  document.getElementById('browse').innerHTML=`<div class="matrix-grid">${c}</div>`;
+}
+
+// ── APP INIT ──
+async function startApp(){
+  skeleton();
+  try{
+    const [rb,rr]=await Promise.all([fetch('/api/books'),fetch('/api/recs')]);
+    BOOKS=await rb.json(); RECS=await rr.json();
+    if(BOOKS.length>0){buildSB();render();updateFavCount();}
+    else document.getElementById('browse').innerHTML='<div class="nores"><span class="big">📭</span>No books found. Run the ML pipeline first.</div>';
+  }catch(e){
+    document.getElementById('browse').innerHTML='<div class="nores"><span class="big">⚡</span>Connection failed. Start the Flask server first.<br><code style="color:var(--text3);font-size:12px;margin-top:8px;display:block">python app/app.py</code></div>';
   }
 }
 
+// ── SIDEBAR ──
 function buildSB(){
-  const uniqueCats = [...new Set(BOOKS.map(b => b.category).filter(c => c))].sort();
-  const el = document.getElementById('sbCats');
-  el.innerHTML = uniqueCats.map(c => `<div class="cpill" data-c="${c}" onclick="setCat('${c}', this)"><div class="cdot" style="background:${CCLR[c] || '#fff'}"></div>${CE[c] || '📐'} ${c}</div>`).join('');
+  const cats={};
+  BOOKS.forEach(b=>{if(b.category){cats[b.category]=(cats[b.category]||0)+1;}});
+  const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('sbCats').innerHTML=sorted.map(([c,n])=>
+    `<div class="cpill" data-c="${c}" onclick="setCat('${c}',this)"><div class="cdot" style="background:${CCLR[c]||'#fff'}"></div>${CE[c]||'📐'} ${c}<span class="nav-badge">${n}</span></div>`
+  ).join('');
 }
 
-function getFilteredBooks() {
-  let list = BOOKS.filter(b => {
-    if (cat !== 'all' && b.category !== cat) return false;
-    if (!q) return true;
-    const lq = q.toLowerCase();
-    return (b.title||'').toLowerCase().includes(lq) || (b.author||'').toLowerCase().includes(lq);
-  });
-  return [...list].sort((a, b) => {
-    if(srt==='score') return b.score - a.score;
-    if(srt==='rating') return (b.rating || 0) - (a.rating || 0);
-    if(srt==='popularity') return (b.ratings_count || 0) - (a.ratings_count || 0);
-    if(srt==='year') return (b.year || 0) - (a.year || 0);
-    return 0;
-  });
-}
-
-function render() {
-  const books = getFilteredBooks();
-  const br = document.getElementById('browse');
-  
-  if (q || cat !== 'all' || srt !== 'score') {
-    let title = q ? `Results for "${q}"` : (cat !== 'all' ? `${CE[cat]||'📚'} ${cat}` : `Highest ${srt}`);
-    // USE MATRIX GRID CLASS HERE
-    br.innerHTML = `<div class="ptitle">${esc(title)}</div><div class="psub">${books.length} items</div><div class="matrix-grid">${books.map(bcardH).join('')}</div>`;
-  } else {
-    const byCat = {};
-    BOOKS.forEach(b => { if(!byCat[b.category]) byCat[b.category]=[]; byCat[b.category].push(b); });
-    let h = `<div class="ptitle">Good ${greet()} 👋</div><div class="psub">${BOOKS.length} books ready</div>`;
-    h += shelf('🏆 Top Picks', [...BOOKS].sort((a,b)=>b.score-a.score).slice(0,10));
-    Object.entries(byCat).sort((a,b)=>b[1].length-a[1].length).forEach(([c, bs]) => {
-      h += shelf(`${CE[c]||'📚'} ${c}`, [...bs].sort((a,b)=>b.score-a.score).slice(0, 10));
-    });
-    br.innerHTML = h;
+// ── SEARCH ──
+function fuzzyMatch(text,query){
+  text=(text||'').toLowerCase();query=(query||'').toLowerCase();
+  if(!query) return 0;
+  if(text === query) return 1.0;
+  if(text.includes(query)) {
+    return 0.70 + (query.length / text.length) * 0.25;
   }
-  br.querySelectorAll('.bcov[data-title]').forEach(w => obs.observe(w));
+  const words=text.split(/\s+/);
+  let maxWordScore = 0;
+  for(const w of words){
+    if(w.startsWith(query) || query.startsWith(w)) {
+      const matchLen = Math.min(w.length, query.length);
+      const score = 0.50 + (matchLen / Math.max(w.length, query.length)) * 0.40;
+      if (score > maxWordScore) maxWordScore = score;
+    }
+  }
+  if (maxWordScore > 0) return maxWordScore;
+  const qWords=query.split(/\s+/).filter(w=>w.length>1);
+  if(qWords.length>1){
+    const matched=qWords.filter(qw=>text.includes(qw));
+    if(matched.length>0) return 0.30 + (matched.length/qWords.length) * 0.40;
+  }
+  return 0;
 }
 
-function shelf(t, bs) { return `<div class="sec"><div class="sech"><div class="sect">${t}</div></div><div class="shelf">${bs.map(bcardH).join('')}</div></div>`; }
+function getFilteredBooks(){
+  let list=BOOKS.filter(b=>{
+    if(showFavsMode&&!favorites.includes(b.title)) return false;
+    if(cat!=='all'&&b.category!==cat) return false;
+    if(!q) return true;
+    const score=Math.max(fuzzyMatch(b.title||'',q),fuzzyMatch(b.author||'',q),fuzzyMatch(b.category||'',q));
+    b._searchScore=score;
+    return score>0.3;
+  });
+  if(q){
+    list.sort((a,b)=>(b._searchScore||0)-(a._searchScore||0));
+  } else {
+    list.sort((a,b)=>{
+      if(srt==='score') return b.score-a.score;
+      if(srt==='rating') return (b.rating||0)-(a.rating||0);
+      if(srt==='popularity') return (b.ratings_count||0)-(a.ratings_count||0);
+      if(srt==='year') return (b.year||0)-(a.year||0);
+      return 0;
+    });
+  }
+  return list;
+}
 
-function bcardH(b) {
-  const sel = b.title === activeTitle ? ' sel' : '';
+// ── RENDER ──
+function render(){
+  const books=getFilteredBooks();
+  const br=document.getElementById('browse');
+  br.scrollTo({top:0,behavior:'smooth'});
+
+  if(showFavsMode){
+    if(books.length===0) br.innerHTML='<div class="ptitle">❤️ Favorites</div><div class="psub">No favorites yet. Click the heart on any book to save it.</div>';
+    else br.innerHTML=`<div class="ptitle">❤️ Favorites</div><div class="psub">${books.length} saved</div><div class="matrix-grid">${books.map(bcardH).join('')}</div>`;
+  } else if(q||cat!=='all'||srt!=='score'){
+    let title=q?`Results for "${esc(q)}"`:cat!=='all'?`${CE[cat]||'📚'} ${cat}`:`Sorted by ${srt}`;
+    br.innerHTML=`<div class="ptitle">${title}</div><div class="psub">${books.length} books</div>${books.length?`<div class="matrix-grid">${books.map(bcardH).join('')}</div>`:'<div class="nores"><span class="big">🔍</span>No books match your search.</div>'}`;
+  } else {
+    const byCat={};
+    BOOKS.forEach(b=>{if(!byCat[b.category])byCat[b.category]=[];byCat[b.category].push(b);});
+    let h=`<div class="ptitle">Good ${greet()} 👋</div><div class="psub">${BOOKS.length} engineering books curated by AI</div>`;
+    h+=shelf('🏆 Top Picks',[...BOOKS].sort((a,b)=>b.score-a.score).slice(0,12));
+    if(favorites.length>0) h+=shelf('❤️ Your Favorites',BOOKS.filter(b=>favorites.includes(b.title)).slice(0,12));
+    Object.entries(byCat).sort((a,b)=>b[1].length-a[1].length).forEach(([c,bs])=>{
+      h+=shelf(`${CE[c]||'📚'} ${c}`,[...bs].sort((a,b)=>b.score-a.score).slice(0,12));
+    });
+    br.innerHTML=h;
+  }
+  br.querySelectorAll('.bcov[data-title]').forEach(w=>obs.observe(w));
+}
+
+function shelf(t,bs){return `<div class="sec"><div class="sect">${t}</div><div class="shelf">${bs.map(bcardH).join('')}</div></div>`;}
+
+function starsHTML(r){
+  if(!r) return '<span class="stars"><span class="empty">☆☆☆☆☆</span></span>';
+  const full=Math.floor(r),half=r%1>=0.3,empty=5-full-(half?1:0);
+  return `<span class="stars">${'★'.repeat(full)}${half?'⯨':''}${'<span class="empty">☆</span>'.repeat(Math.max(0,empty))}</span>`;
+}
+
+function bcardH(b){
+  const sel=b.title===activeTitle?' sel':'';
+  const fav=favorites.includes(b.title);
+  let badgeHtml = '';
+  if (q) {
+    const scorePct = Math.round((b._searchScore || 0) * 100);
+    if (scorePct > 0) {
+      badgeHtml = `<div class="score-badge">${scorePct}% match</div>`;
+    }
+  }
   return `<div class="bc${sel}" data-t="${ea(b.title)}" onclick="openDP(this.dataset.t)">
-    <div class="bcov" data-title="${ea(b.title)}" data-author="${ea(b.author)}"><div class="bshim"></div><div class="bemo">${CE[b.category]||'📚'}</div></div>
+    <div class="bcov" data-title="${ea(b.title)}" data-author="${ea(b.author)}"><div class="bshim"></div><div class="bemo">${CE[b.category]||'📚'}</div>
+      <button class="fav-btn${fav?' active':''}" onclick="event.stopPropagation();toggleFav('${ea(b.title)}')" title="${fav?'Remove from':'Add to'} favorites">${fav?'❤️':'🤍'}</button>
+      ${badgeHtml}
+    </div>
     <div class="btit">${esc(b.title)}</div><div class="baut">${esc(b.author)}</div>
-    <div class="brat"><span class="bstar">★</span><span class="brn">${b.rating || '—'}</span></div>
+    <div class="brat">${starsHTML(b.rating)}<span class="brn">${b.rating||'—'}</span></div>
   </div>`;
 }
 
-function openDP(title) {
-  const b = BOOKS.find(x => x.title === title); if(!b) return;
-  activeTitle = title;
-  document.querySelectorAll('.bc').forEach(el => el.classList.toggle('sel', el.dataset.t === title));
-  const dp = document.getElementById('dp'); const dpi = document.getElementById('dpi');
-  document.getElementById('dpbc').textContent = b.title; dp.classList.remove('closed');
-  const recs = RECS[title] || []; const scorePct = Math.round(b.score * 100);
+// ── DETAIL PANEL ──
+function openDP(title){
+  const b=BOOKS.find(x=>x.title===title);if(!b)return;
+  activeTitle=title;closeMobile();
+  document.querySelectorAll('.bc').forEach(el=>el.classList.toggle('sel',el.dataset.t===title));
+  const dp=document.getElementById('dp'),dpi=document.getElementById('dpi');
+  document.getElementById('dpbc').textContent=b.title;dp.classList.remove('closed');
+  const recs=RECS[title]||[];const fav=favorites.includes(b.title);
 
-  dpi.innerHTML = `
+  dpi.innerHTML=`
     <div class="vhero">
-      <div class="vbg" id="vbg" style="background-image:url('')"></div>
+      <div class="vbg" id="vbg"></div>
       <div class="vhero-inner">
-        <div class="vcw" id="dpCovWrap"><div class="bshim"></div><div class="bemo" style="font-size:55px; display:flex; align-items:center; justify-content:center; height:100%">${CE[b.category]||'📚'}</div></div>
-        <div class="vmeta" style="flex:1">
-          <div style="font-size:11px; color:var(--accent); font-weight:900; text-transform:uppercase">${b.category}</div>
-          <h2 style="font-size:22px; margin:8px 0; line-height:1.2">${esc(b.title)}</h2>
-          <div style="color:#aaa; font-size:14px; margin-bottom:12px">by ${esc(b.author)}</div>
-          <div style="display:flex; align-items:center; gap:12px"><span style="font-size:32px; font-weight:800; color:#f0c040">${b.rating || '—'}</span><div><div style="font-size:12px; color:#f0c040">★★★★★</div><div style="font-size:10px; color:#555">${b.ratings_count || 0} reviews</div></div></div>
-          <div class="badge-row"><span class="badge">TECHNICAL</span><span class="badge">${b.year || 'Classic'}</span><span class="badge">${scorePct}% AI Match</span></div>
+        <div class="vcw" id="dpCovWrap"><div class="bshim"></div><div class="bemo" style="font-size:55px;display:flex;align-items:center;justify-content:center;height:100%">${CE[b.category]||'📚'}</div></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;color:var(--accent);font-weight:800;text-transform:uppercase;letter-spacing:1px">${b.category}</div>
+          <h2 style="font-size:20px;margin:8px 0;line-height:1.3;font-weight:700">${esc(b.title)}</h2>
+          <div style="color:var(--text2);font-size:13px;margin-bottom:14px">by ${esc(b.author)}</div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <span style="font-size:30px;font-weight:800;color:var(--star)">${b.rating||'—'}</span>
+            <div>${starsHTML(b.rating)}<div style="font-size:10px;color:var(--text3);margin-top:2px">${(b.ratings_count||0).toLocaleString()} ratings</div></div>
+          </div>
+          <div class="badge-row"><span class="badge">${b.year||'Classic'}</span><span class="badge">${b.pages||'?'} pages</span></div>
         </div>
       </div>
     </div>
     <div class="vact-bar">
-      ${b.download_link ? `<a href="${b.download_link}" target="_blank" class="btn-dl">Install / Download</a>` : `<button class="btn-dl" style="opacity:0.3; cursor:not-allowed">Direct Link N/A</button>`}
-      <a href="https://openlibrary.org/search?q=${encodeURIComponent(b.title)}" target="_blank" style="padding:9px 18px; border:1px solid #444; color:#ccc; border-radius:4px; text-decoration:none; font-size:13px">Check Repository</a>
+      ${b.download_link?`<a href="${b.download_link}" target="_blank" class="btn-primary">⬇ Download</a>`:`<button class="btn-primary" style="opacity:0.3;cursor:not-allowed" disabled>⬇ No Direct Link</button>`}
+      <a href="https://openlibrary.org/search?q=${encodeURIComponent(b.title)}" target="_blank" class="btn-secondary">📖 Open Library</a>
+      <button class="btn-secondary" onclick="toggleFav('${ea(b.title)}');openDP('${ea(b.title)}')">${fav?'💔 Unfavorite':'❤️ Favorite'}</button>
     </div>
-    <div class="vtabs"><div class="vtab on">Description & Recommendations</div></div>
-    <div style="padding:22px">
-      <p style="color:#bbb; line-height:1.7; font-size:14px; margin-bottom:25px">${esc(b.desc_short)}...</p>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:25px">
-         <div style="background:#252526; padding:12px; border-radius:6px; border:1px solid #333"><div style="font-size:9px; color:#555; margin-bottom:4px">PUBLISHER</div><div style="font-size:13px">${esc(b.publisher)}</div></div>
-         <div style="background:#252526; padding:12px; border-radius:6px; border:1px solid #333"><div style="font-size:9px; color:#555; margin-bottom:4px">CATEGORY</div><div style="font-size:13px">${b.category}</div></div>
+    <div class="vtabs"><div class="vtab">Description & Recommendations</div></div>
+    <div style="padding:24px 28px">
+      <p style="color:var(--text2);line-height:1.8;font-size:14px;margin-bottom:24px">${esc(b.desc_short)||'No description available.'}${b.desc_short?'...':''}</p>
+      <div class="meta-grid">
+        <div class="meta-card"><div class="label">Publisher</div><div class="value">${esc(b.publisher)}</div></div>
+        <div class="meta-card"><div class="label">Source</div><div class="value">${esc(b.source||b.platform)}</div></div>
       </div>
-      <h4 style="font-size:11px; color:#555; text-transform:uppercase; margin-bottom:12px">Similar Resources</h4>
-      <div class="simlist">${recs.map(r => `
-        <div onclick="openDP('${ea(r.title)}')" style="display:flex; gap:12px; background:#252526; padding:10px; border-radius:6px; margin-bottom:8px; cursor:pointer; border:1px solid #333">
-           <div style="font-size:20px">${CE[BOOKS.find(x=>x.title===r.title)?.category] || '📚'}</div>
-           <div style="flex:1; min-width:0"><div style="font-size:12px; font-weight:700; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${esc(r.title)}</div><div style="font-size:10px; color:#666">Match: ${Math.round(r.similarity*100)}%</div></div>
-        </div>`).join('')}</div>
-    </div>
-  `;
+      ${recs.length?`<h4 style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px">Similar Books</h4>
+      ${recs.map(r=>`<div class="sim-card" onclick="openDP('${ea(r.title)}')">
+        <div style="font-size:22px;flex-shrink:0">${CE[BOOKS.find(x=>x.title===r.title)?.category]||'📚'}</div>
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.title)}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${esc(r.author)} · ${starsHTML(r.rating)} ${r.rating}</div>
+        <div style="margin-top:4px"><span style="font-size:10px;color:var(--accent);font-weight:700">${Math.min(99, Math.round(65 + r.similarity * 120))}% match</span></div></div>
+      </div>`).join('')}`:''}
+    </div>`;
 
-  getCover(b.title, b.author).then(url => { if(url) { applyImg(document.getElementById('dpCovWrap'), url, '.bshim', '.bemo'); document.getElementById('vbg').style.backgroundImage = `url('${url}')`; } });
+  getCover(b.title,b.author).then(url=>{if(url){applyImg(document.getElementById('dpCovWrap'),url,'.bshim','.bemo');document.getElementById('vbg').style.backgroundImage=`url('${url}')`;}else{const s=document.querySelector('#dpCovWrap .bshim');if(s)s.classList.add('gone');const e=document.querySelector('#dpCovWrap .bemo');if(e)e.classList.add('show');}});
 }
 
-function closeDP() { document.getElementById('dp').classList.add('closed'); activeTitle = null; document.querySelectorAll('.bc').forEach(el=>el.classList.remove('sel')); }
+function closeDP(){document.getElementById('dp').classList.add('closed');activeTitle=null;document.querySelectorAll('.bc').forEach(el=>el.classList.remove('sel'));}
 
-function setCat(c, el) { 
-    cat = c; q = ''; document.querySelectorAll('.cpill').forEach(p=>p.classList.remove('active'));
-    if(el) el.classList.add('active'); document.getElementById('homeBtn').classList.remove('active');
-    render(); 
+// ── NAVIGATION ──
+function clearActive(){document.querySelectorAll('.nav-item,.cpill').forEach(p=>p.classList.remove('active'));}
+function setCat(c,el){cat=c;q='';showFavsMode=false;clearActive();if(el)el.classList.add('active');render();}
+function showHome(){cat='all';q='';srt='score';showFavsMode=false;document.getElementById('srch').value='';clearActive();document.getElementById('homeBtn').classList.add('active');['sb_score','sb_rating','sb_popularity'].forEach((id,i)=>document.getElementById(id).classList.toggle('active',i===0));render();}
+function showFavs(){showFavsMode=true;cat='all';q='';clearActive();document.getElementById('nav_fav').classList.add('active');render();}
+function setSrt(s){srt=s;showFavsMode=false;clearActive();const navId='nav_'+s;if(document.getElementById(navId))document.getElementById(navId).classList.add('active');['sb_score','sb_rating','sb_popularity'].forEach(id=>document.getElementById(id).classList.toggle('active',id==='sb_'+s));render();}
+function focusSearch(){document.getElementById('srch').focus();clearActive();document.getElementById('searchBtn').classList.add('active');}
+
+// ── FAVORITES ──
+function toggleFav(title){
+  const i=favorites.indexOf(title);
+  if(i>=0)favorites.splice(i,1);else favorites.push(title);
+  localStorage.setItem('bookify_favs',JSON.stringify(favorites));
+  updateFavCount();render();
 }
+function updateFavCount(){document.getElementById('favCount').textContent=favorites.length;}
 
-function showHome() { 
-    cat = 'all'; q = ''; srt = 'score'; document.getElementById('srch').value = ''; 
-    document.querySelectorAll('.cpill').forEach(p=>p.classList.remove('active'));
-    document.getElementById('homeBtn').classList.add('active');
-    ['sb_score','sb_rating','sb_popularity'].forEach((id,i)=>document.getElementById(id).classList.toggle('active', i===0));
-    render(); 
-}
+// ── MOBILE ──
+function toggleMobile(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('mobileOverlay').classList.toggle('show');}
+function closeMobile(){document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('show');}
 
-function setSrt(s) { srt = s; ['sb_score','sb_rating','sb_popularity'].forEach(id => document.getElementById(id).classList.toggle('active', id === 'sb_'+s)); render(); }
-
-const obs = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if(!e.isIntersecting) return;
-    obs.unobserve(e.target);
-    getCover(e.target.dataset.title, e.target.dataset.author).then(url => {
-        if(url) applyImg(e.target, url, '.bshim', '.bemo');
-        else { e.target.querySelector('.bshim').classList.add('gone'); e.target.querySelector('.bemo').classList.add('show'); }
+// ── COVER IMAGES ──
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(!e.isIntersecting)return;obs.unobserve(e.target);
+    const shimEl=e.target.querySelector('.bshim'),emoEl=e.target.querySelector('.bemo');
+    const timer=setTimeout(()=>{if(shimEl)shimEl.classList.add('gone');if(emoEl)emoEl.classList.add('show');},5000);
+    getCover(e.target.dataset.title,e.target.dataset.author).then(url=>{
+      clearTimeout(timer);
+      if(url)applyImg(e.target,url,'.bshim','.bemo');
+      else{if(shimEl)shimEl.classList.add('gone');if(emoEl)emoEl.classList.add('show');}
     });
   });
 });
 
-async function getCover(title, author) {
-    try {
-        const qStr = encodeURIComponent(title + ' ' + (author || ''));
-        const r = await fetch(`https://openlibrary.org/search.json?q=${qStr}&limit=1&fields=cover_i`);
-        const d = await r.json();
-        return d.docs[0]?.cover_i ? `https://covers.openlibrary.org/b/id/${d.docs[0].cover_i}-M.jpg` : null;
-    } catch { return null; }
+async function getCover(title,author){
+  try{const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title+' '+(author||''))}&limit=1&fields=cover_i`);
+  const d=await r.json();return d.docs[0]?.cover_i?`https://covers.openlibrary.org/b/id/${d.docs[0].cover_i}-M.jpg`:null;}catch{return null;}
+}
+function applyImg(wrap,url,shim,ph){
+  const img=new Image();img.onload=()=>{const el=document.createElement('img');el.src=url;wrap.insertBefore(el,wrap.firstChild);
+  setTimeout(()=>el.classList.add('ok'),50);const s=wrap.querySelector(shim);if(s)s.classList.add('gone');};img.src=url;
 }
 
-function applyImg(wrap, url, shim, ph) {
-    const img = new Image();
-    img.onload = () => {
-        const el = document.createElement('img'); el.src = url; wrap.insertBefore(el, wrap.firstChild);
-        setTimeout(() => el.classList.add('ok'), 50); const s = wrap.querySelector(shim); if(s) s.classList.add('gone');
-    };
-    img.src = url;
-}
+// ── KEYBOARD ──
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeDP();
+  if(e.key==='/'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();focusSearch();}
+});
 
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
-function ea(s) { return String(s||'').replace(/"/g,'&quot;'); }
-function greet() { const h = new Date().getHours(); return h<12?'morning':h<14?'afternoon':'evening'; }
+// ── UTILITIES ──
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function ea(s){return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function greet(){const h=new Date().getHours();return h<12?'morning':h<17?'afternoon':'evening';}
 
+// ── SEARCH INPUT ──
 let dt;
-document.getElementById('srch').addEventListener('input', e => {
-  q = e.target.value.trim(); clearTimeout(dt); dt = setTimeout(render, 200);
+document.getElementById('srch').addEventListener('input',e=>{
+  q=e.target.value.trim();showFavsMode=false;clearTimeout(dt);dt=setTimeout(render,200);
 });
 
 startApp();
