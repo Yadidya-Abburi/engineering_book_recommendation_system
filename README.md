@@ -137,7 +137,7 @@ SCORE.WEIGHT_POPULARITY = 0.40   # Fraction of score from log(ratings count)
 ### Pipeline overview
 
 ```
-Raw CSV  (merged Goodreads 2,375 + Google Books 1,488 = 3,293 rows)
+Raw CSV  (merged Goodreads 2,375 + Google Books filtered 918 = 3,293 rows)
    ↓
 Preprocessing
   · Clean fields · Fill nulls · Strip blocked CDN image URLs
@@ -194,12 +194,12 @@ All data is cached in memory at startup for fast responses.
 
 | | Goodreads | Google Books | Combined |
 |---|---|---|---|
-| Raw rows | 2,375 | 1,488 | 3,293 |
+| Input rows | 2,375 | 918 (filtered) | 3,293 |
 | After exact dedup | — | — | 3,249 |
 | After fuzzy dedup | — | — | ~3,233 |
 | After domain filter | — | — | ~3,233 |
 | Has download link | 2,296 / 2,375 | 0 | 2,296 |
-| Has rating | 2,375 / 2,375 | 102 / 1,488 | — |
+| Has rating | 2,375 / 2,375 | 102 / 918 | — |
 
 ---
 
@@ -258,6 +258,19 @@ Run: `pytest tests/ -v` — all 119 pass.
 | `thefuzz` | ≥ 0.22 | Fuzzy string matching |
 | HTML / CSS / JS | — | Premium responsive web app |
 | Open Library API | — | Book cover images |
+
+---
+
+## 🤝 5. Deployment Recommendations for Collaborators
+
+Your team can utilize the following workflow cleanly:
+
+- **Pull Code from Git:** Ensure all collaborators have the freshest commits reflecting the newly unlocked 3,233 dataset scale.
+- **Execute Clean Setup:** `python -m venv venv` and `pip install -r requirements.txt`.
+- **Execute ML Run:** `python scripts/preprocess.py --skip-enrichment` followed by `python scripts/train_model.py`.
+- **Boot Flask Server:** `python app/app.py`.
+
+The core architectural base is highly robust. To future-proof the application if the input data expands to 10,000+ rows, consider eventually migrating the frontend to intercept server-side pagination instead of pushing the complete JSON blobs, though current browsers navigate the 3,000 element UI list effortlessly.
 
 > **Python version**: tested on **3.10 – 3.14**.
 
