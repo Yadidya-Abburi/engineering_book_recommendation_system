@@ -37,7 +37,7 @@ class MODEL:
     # FIX #1 — was 150, raised to 500 so that similar-book links can be
     # opened in the app. Previously 85% of "Similar Books" clicks silently
     # failed because the recommended book was outside the top-150 BOOKS array.
-    TOP_N = 500
+    TOP_N = 10000
 
     N_RECS              = 5
     DESC_SHORT_LEN      = 300

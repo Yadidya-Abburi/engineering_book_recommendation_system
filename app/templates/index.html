@@ -254,19 +254,26 @@ function buildSB(){
 
 // ── SEARCH ──
 function fuzzyMatch(text,query){
-  text=text.toLowerCase();query=query.toLowerCase();
+  text=(text||'').toLowerCase();query=(query||'').toLowerCase();
   if(!query) return 0;
-  // exact substring
-  if(text.includes(query)) return 1.0;
-  // word-start prefix match (e.g. "pythn" won't match, but "pyth" will match "python")
+  if(text === query) return 1.0;
+  if(text.includes(query)) {
+    return 0.70 + (query.length / text.length) * 0.25;
+  }
   const words=text.split(/\s+/);
-  for(const w of words){if(w.startsWith(query)||query.startsWith(w)) return 0.8;}
-  // multi-word query: check if each word matches
+  let maxWordScore = 0;
+  for(const w of words){
+    if(w.startsWith(query) || query.startsWith(w)) {
+      const matchLen = Math.min(w.length, query.length);
+      const score = 0.50 + (matchLen / Math.max(w.length, query.length)) * 0.40;
+      if (score > maxWordScore) maxWordScore = score;
+    }
+  }
+  if (maxWordScore > 0) return maxWordScore;
   const qWords=query.split(/\s+/).filter(w=>w.length>1);
   if(qWords.length>1){
     const matched=qWords.filter(qw=>text.includes(qw));
-    if(matched.length===qWords.length) return 0.9;
-    if(matched.length/qWords.length>=0.5) return 0.5;
+    if(matched.length>0) return 0.30 + (matched.length/qWords.length) * 0.40;
   }
   return 0;
 }
@@ -331,11 +338,17 @@ function starsHTML(r){
 function bcardH(b){
   const sel=b.title===activeTitle?' sel':'';
   const fav=favorites.includes(b.title);
-  const scorePct=Math.round((b.score||0)*100);
+  let badgeHtml = '';
+  if (q) {
+    const scorePct = Math.round((b._searchScore || 0) * 100);
+    if (scorePct > 0) {
+      badgeHtml = `<div class="score-badge">${scorePct}% match</div>`;
+    }
+  }
   return `<div class="bc${sel}" data-t="${ea(b.title)}" onclick="openDP(this.dataset.t)">
     <div class="bcov" data-title="${ea(b.title)}" data-author="${ea(b.author)}"><div class="bshim"></div><div class="bemo">${CE[b.category]||'📚'}</div>
       <button class="fav-btn${fav?' active':''}" onclick="event.stopPropagation();toggleFav('${ea(b.title)}')" title="${fav?'Remove from':'Add to'} favorites">${fav?'❤️':'🤍'}</button>
-      ${scorePct>0?`<div class="score-badge">${scorePct}% match</div>`:''}
+      ${badgeHtml}
     </div>
     <div class="btit">${esc(b.title)}</div><div class="baut">${esc(b.author)}</div>
     <div class="brat">${starsHTML(b.rating)}<span class="brn">${b.rating||'—'}</span></div>
@@ -349,7 +362,7 @@ function openDP(title){
   document.querySelectorAll('.bc').forEach(el=>el.classList.toggle('sel',el.dataset.t===title));
   const dp=document.getElementById('dp'),dpi=document.getElementById('dpi');
   document.getElementById('dpbc').textContent=b.title;dp.classList.remove('closed');
-  const recs=RECS[title]||[];const scorePct=Math.round(b.score*100);const fav=favorites.includes(b.title);
+  const recs=RECS[title]||[];const fav=favorites.includes(b.title);
 
   dpi.innerHTML=`
     <div class="vhero">
@@ -364,7 +377,7 @@ function openDP(title){
             <span style="font-size:30px;font-weight:800;color:var(--star)">${b.rating||'—'}</span>
             <div>${starsHTML(b.rating)}<div style="font-size:10px;color:var(--text3);margin-top:2px">${(b.ratings_count||0).toLocaleString()} ratings</div></div>
           </div>
-          <div class="badge-row"><span class="badge">${b.year||'Classic'}</span><span class="badge">${scorePct}% AI Match</span><span class="badge">${b.pages||'?'} pages</span></div>
+          <div class="badge-row"><span class="badge">${b.year||'Classic'}</span><span class="badge">${b.pages||'?'} pages</span></div>
         </div>
       </div>
     </div>
@@ -385,7 +398,7 @@ function openDP(title){
         <div style="font-size:22px;flex-shrink:0">${CE[BOOKS.find(x=>x.title===r.title)?.category]||'📚'}</div>
         <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.title)}</div>
         <div style="font-size:11px;color:var(--text2);margin-top:2px">${esc(r.author)} · ${starsHTML(r.rating)} ${r.rating}</div>
-        <div style="margin-top:4px"><span style="font-size:10px;color:var(--accent);font-weight:700">${Math.round(r.similarity*100)}% match</span></div></div>
+        <div style="margin-top:4px"><span style="font-size:10px;color:var(--accent);font-weight:700">${Math.min(99, Math.round(65 + r.similarity * 120))}% match</span></div></div>
       </div>`).join('')}`:''}
     </div>`;
 
