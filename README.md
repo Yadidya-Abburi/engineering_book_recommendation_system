@@ -35,7 +35,7 @@ bookify/
 │
 ├── outputs/
 │   ├── books_clean.csv          ← Merged, deduplicated, categorised dataset (~3,233 rows)
-│   ├── top_books.csv            ← Top 498 ranked books with all 19 fields
+│   ├── top_books.csv            ← Full processed corpus ready for the app (~3,233 rows)
 │   ├── recommendations.json     ← Top-5 recs per book (category-boosted, pool-restricted)
 │   └── plots/                   ← 6 PNG charts from evaluate.py
 │
@@ -55,53 +55,55 @@ bookify/
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Step-by-Step Execution Guide (From Pull to Run)
 
-### 1. Install dependencies
+Follow these steps to get the full 3,200+ book recommendation system running locally:
+
+### 1. Pull the repository and set up environment
+First, pull the latest code and create a clean Python virtual environment.
+```bash
+git pull origin main
+python -m venv venv
+
+# On Windows:
+venv\Scripts\activate
+# On Mac/Linux:
+source venv/bin/activate
+```
+
+### 2. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Run the full pipeline
-
+### 3. Run the Data Pipeline & ML Training
+Process the raw data, generate the TF-IDF vectors, compute cosine similarities, and extract the JSON recommendations. This processes the entire 3,200+ book corpus.
 ```bash
-# Step 1 – Clean & merge datasets (skips 13-min API enrichment for quick runs)
+# Step 1: Clean & merge raw CSV datasets 
+# (omitting --skip-enrichment will take ~13 mins to fetch descriptions from Google Books API)
 python scripts/preprocess.py --skip-enrichment
 
-# Full run with Google Books description enrichment (~13 min for missing descriptions)
-python scripts/preprocess.py
-
-# Step 2 – Train the ML model (~10 seconds)
+# Step 2: Train the ML model and generate recommendations
 python scripts/train_model.py
 
-# Step 3 – Evaluate & generate plots
+# Step 3: (Optional) Evaluate model metrics and generate charts
 python scripts/evaluate.py
-
-
 ```
 
-Each script exits **0** on success, **1** on failure — safe to chain:
+### 4. Launch the Web App
+Start the Flask backend server that serves the beautiful UI and in-memory search APIs:
 ```bash
-python scripts/preprocess.py --skip-enrichment && \
-python scripts/train_model.py && \
-python scripts/evaluate.py
+python app/app.py
 ```
+Open **http://127.0.0.1:8765** in any browser to explore the massive AI-curated engineering library!
 
-### 3. Run the tests
+### 5. Run the tests (Optional)
 ```bash
 pytest tests/ -v
 # With coverage report:
 pytest tests/ -v --cov=scripts --cov-report=term-missing
 ```
 All **119 tests** should pass (~92% line coverage).
-
-### 4. Launch the web app
-```bash
-python app/app.py
-# or
-python launch.py
-```
-Open **http://127.0.0.1:8765** in any browser.
 
 ### 5. Explore the notebook
 ```bash
@@ -121,7 +123,7 @@ from config.settings import PATHS, MODEL, SCORE
 
 # --- Key tunable constants ---
 
-MODEL.TOP_N = 500          # Books retained for the app
+MODEL.TOP_N = 10000        # Ensure all processed books are retained for the app
 MODEL.BAYES_MIN_VOTES = 500  # Bayesian rating threshold
 
 SCORE.WEIGHT_RATING     = 0.60   # Fraction of score from Bayesian average rating
@@ -156,7 +158,7 @@ Bayesian Hybrid Scoring
   score = 0.60×bayes_norm + 0.40×log(count)_norm
   Re-scaled within top-N so rank-1 = 1.0, rank-N ≈ 0.0
    ↓
-Top 498 books + top-5 similar books per title
+Top ~3233 books + top-5 similar books per title
   (category-boosted: same-category books get +0.15 similarity boost)
   (recs restricted to top-500 pool so every "Similar Books" link works)
 ```
@@ -178,7 +180,7 @@ The Flask backend serves the following endpoints on `http://127.0.0.1:8765`:
 | Endpoint | Method | Description |
 |---|---|---|
 | `/` | GET | Serves the web app |
-| `/api/books` | GET | All 498 top books (JSON array) |
+| `/api/books` | GET | All ~3,233 processed books (JSON array) |
 | `/api/books?domain=AI` | GET | Books filtered by category |
 | `/api/recs` | GET | All recommendations (JSON object: title → [recs]) |
 | `/api/search?q=python` | GET | Server-side fuzzy search |
