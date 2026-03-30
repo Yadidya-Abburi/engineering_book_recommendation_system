@@ -512,7 +512,7 @@ class TestPreprocessMain(unittest.TestCase):
                          f"preprocess.py exited non-zero:\n{result.stderr[-500:]}")
 
     def test_main_returns_one_when_data_missing(self):
-        """main() must return 1 when CSV data files are absent."""
+        """main() must return 1 when all CSV data files are absent."""
         from unittest.mock import patch
         import sys
         sys.argv = ["preprocess.py", "--skip-enrichment"]
@@ -520,6 +520,7 @@ class TestPreprocessMain(unittest.TestCase):
         with patch("scripts.preprocess.PATHS") as mp:
             mp.GOODREADS_CSV = "/nonexistent/file.csv"
             mp.GOOGLE_CSV    = "/nonexistent/file2.csv"
+            mp.FINAL_CSV     = "/nonexistent/file3.csv"
             mp.OUTPUTS       = "/tmp"
             result = main()
         self.assertEqual(result, 1)

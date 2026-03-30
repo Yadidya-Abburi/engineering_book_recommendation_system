@@ -6,9 +6,8 @@ scikit-learn>=1.5,<2
 scipy>=1.13,<2
 joblib>=1.4,<2
 
-# Web Frameworks
+# Web Framework
 flask>=3.0.0
-streamlit>=1.35.0,<2
 
 # HTTP (cover pre-fetching in preprocess.py and build_app.py)
 requests>=2.31,<3

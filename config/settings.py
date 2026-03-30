@@ -20,6 +20,7 @@ class PATHS:
 
     GOODREADS_CSV = os.path.join(DATA,    "goodreads_engineering_books.csv")
     GOOGLE_CSV    = os.path.join(DATA,    "google_books_technical.csv")
+    FINAL_CSV     = os.path.join(DATA,    "final_books.csv")
     CLEAN_CSV     = os.path.join(OUTPUTS, "books_clean.csv")
     TFIDF_PKL     = os.path.join(MODELS,  "tfidf_vectorizer.pkl")
     COSINE_NPY    = os.path.join(MODELS,  "cosine_sim_matrix.npy")

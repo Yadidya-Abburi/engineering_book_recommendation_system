@@ -178,29 +178,37 @@ def extract_top_and_recs(df: pd.DataFrame, sim: np.ndarray):
 
     # Build recs — restricted to top-N pool so every link is openable in the UI
     top_index_set = set(top["index"].astype(int).tolist())
+    # Build a lookup: original df index → category
+    idx_to_cat = {}
+    for _, r in top.iterrows():
+        idx_to_cat[int(r["index"])] = r.get("category", "")
+
     # Build recs — exclude self (j==i) and exact duplicates (sim==1.0)
+    # Category boost: same-category books get +0.15 to their similarity score
+    # so topically relevant books are preferred over spurious cross-category matches.
+    CATEGORY_BOOST = 0.15
     recs: dict[str, list[dict]] = {}
     for _, row in top.iterrows():
         i     = int(row["index"])
         title = row["title"]
-        # FIX #1 (complete): restrict candidates to top-N indices only.
-        # Previously recs were drawn from the full 3,233-book corpus so
-        # clicking a similar book in the UI called openDP() on a title that
-        # wasn't in the BOOKS array -> silent blank panel.
-        scores = [
-            (j, float(s))
-            for j, s in enumerate(sim[i])
-            if j != i and float(s) < 1.0 and j in top_index_set
-        ]
+        i_cat = idx_to_cat.get(i, "")
+        scores = []
+        for j, s in enumerate(sim[i]):
+            s = float(s)
+            if j == i or s >= 1.0 or j not in top_index_set:
+                continue
+            j_cat = idx_to_cat.get(j, "")
+            boosted = s + (CATEGORY_BOOST if i_cat and j_cat and i_cat == j_cat else 0)
+            scores.append((j, boosted, s))  # (index, boosted_score, raw_sim)
         scores = sorted(scores, key=lambda x: x[1], reverse=True)[: MODEL.N_RECS]
         recs[title] = [
             {
                 "title"      : df.iloc[j]["title"].strip(),
                 "author"     : df.iloc[j]["author"],
                 "rating"     : round(float(df.iloc[j]["rating"]), 1),
-                "similarity" : round(s, 3),
+                "similarity" : round(raw_s, 3),
             }
-            for j, s in scores
+            for j, _, raw_s in scores
         ]
 
     remaining_self = sum(1 for t, rl in recs.items() for r in rl if r["title"] == t)
