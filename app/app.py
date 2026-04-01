@@ -107,10 +107,26 @@ def _load_cache():
             
         _cache["books"] = df.to_dict(orient='records')
         
-        # Pre-compute short descriptions for index
+        # Pre-compute short descriptions and fix column mapping
         for b in _cache["books"]:
-            desc = str(b.get('description', ''))
-            b['desc_short'] = desc[:300] if len(desc) > 300 else desc
+            # 1. Description mapping (desc -> description)
+            d = str(b.get('description', '')) or str(b.get('desc', ''))
+            b['description'] = d
+            b['desc_short'] = d[:300] if len(d) > 300 else d
+            
+            # 2. Cover mapping (thumbnail -> cover_url)
+            if not b.get('cover_url') and b.get('thumbnail'):
+                b['cover_url'] = b['thumbnail']
+            
+            # 3. Category mapping (categories -> category)
+            raw_cat = str(b.get('categories', '') or b.get('category', 'Unknown'))
+            if raw_cat.startswith('['):
+                try: 
+                    import json as j
+                    raw_cat = j.loads(raw_cat.replace("'",'"'))[0]
+                except: 
+                    raw_cat = raw_cat.strip("[]'\"")
+            b['category'] = raw_cat or "General Engineering"
             
         print(f"  Successfully loaded the full 3,293-book library")
     else:
