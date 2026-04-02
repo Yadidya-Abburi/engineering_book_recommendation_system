@@ -11,7 +11,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print("🚀 Launching Bookify System...")
-    print("💡 Tip: Make sure you ran scripts/train_model.py first!")
+    print("💡 Tip: The app can fall back to data/final_books.csv, but to load recommendations run scripts/train_model.py first!")
     
     # Execute the Flask app
     subprocess.run([sys.executable, app_file])

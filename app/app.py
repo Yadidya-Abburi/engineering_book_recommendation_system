@@ -25,6 +25,11 @@ _cache = {
     "loaded_at": None
 }
 
+
+def _file_mtime(path):
+    """Return a file's mtime or None when it does not exist."""
+    return os.path.getmtime(path) if os.path.exists(path) else None
+
 # --- BM25 SCORER IMPLEMENTATION ---
 class BM25Scorer:
     """Lightweight, optimized BM25 algorithm for search ranking."""
@@ -63,16 +68,29 @@ class BM25Scorer:
 
 def _load_cache():
     """Load data and ML models into memory once at startup."""
-    if _cache["books"] is not None:
+    _cache["bm25_scorer"] = None
+    csv_candidates = [
+        os.path.join(OUTPUTS_DIR, 'books_enriched.csv'),
+        os.path.join(OUTPUTS_DIR, 'books_clean.csv'),
+        os.path.join(OUTPUTS_DIR, 'books_ultimate.csv'),
+        os.path.join(OUTPUTS_DIR, 'top_books.csv'),
+        os.path.join(DATA_DIR, 'final_books.csv'),
+    ]
+    csv_path = next((path for path in csv_candidates if os.path.exists(path)), csv_candidates[-1])
+    json_path = os.path.join(OUTPUTS_DIR, 'recommendations.json')
+
+    current_books_mtime = _file_mtime(csv_path)
+    current_recs_mtime = _file_mtime(json_path)
+
+    if (
+        _cache["books"] is not None
+        and _cache.get("books_source_path") == csv_path
+        and _cache.get("books_source_mtime") == current_books_mtime
+        and _cache.get("recs_source_mtime") == current_recs_mtime
+    ):
         return
 
-    # 1. Load Books (Priority: Enriched > Clean > Top)
-    e_p = os.path.join(OUTPUTS_DIR, 'books_enriched.csv')
-    c_p = os.path.join(OUTPUTS_DIR, 'books_clean.csv')
-    t_p = os.path.join(OUTPUTS_DIR, 'top_books.csv')
-    
-    csv_path = e_p if os.path.exists(e_p) else (c_p if os.path.exists(c_p) else t_p)
-    
+    # 1. Load Books (Priority: enriched outputs > committed outputs > raw merged data)
     if os.path.exists(csv_path):
         import pandas as pd
         df = pd.read_csv(csv_path).fillna('')
@@ -105,7 +123,6 @@ def _load_cache():
         print(f"WARNING: No data found at {csv_path}")
 
     # 2. Load recommendations.json
-    json_path = os.path.join(OUTPUTS_DIR, 'recommendations.json')
     if os.path.exists(json_path):
         with open(json_path, 'r', encoding='utf-8') as f:
             _cache["recs"] = json.load(f)
@@ -124,6 +141,9 @@ def _load_cache():
         print(f"  BM25 Search Index built for {len(contents)} books")
     
     _cache["loaded_at"] = datetime.now().isoformat()
+    _cache["books_source_path"] = csv_path
+    _cache["books_source_mtime"] = current_books_mtime
+    _cache["recs_source_mtime"] = current_recs_mtime
     print(f"  Cached {len(_cache['books'])} books")
 
 

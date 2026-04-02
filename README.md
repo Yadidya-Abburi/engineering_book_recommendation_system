@@ -97,6 +97,9 @@ python app/app.py
 ```
 Open **http://127.0.0.1:8765** in any browser to explore the massive AI-curated engineering library!
 
+If you cloned the repo fresh and have not run the pipeline yet, the app will still load the committed merged dataset from `data/final_books.csv`.
+To populate recommendations and the full ML index, run Step 3 first.
+
 ### 5. Run the tests (Optional)
 ```bash
 pytest tests/ -v
