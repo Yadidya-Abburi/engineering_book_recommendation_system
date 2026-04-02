@@ -4,16 +4,8 @@ import os
 import requests
 import joblib
 import numpy as np
-import re
 from datetime import datetime
 from sklearn.metrics.pairwise import cosine_similarity
-
-# --- GLOBAL NOISE FILTER ---
-STOP_MSGS = ['this book', 'the author', 'learn how', 'includes', 'overview', 'preface', 'introduction', 'conclusion', 'summary']
-def is_valid_topic(topic):
-    if not topic or len(topic) < 4: return False
-    low = topic.lower().strip()
-    return not any(msg in low for msg in STOP_MSGS)
 
 app = Flask(__name__)
 
@@ -56,22 +48,16 @@ class BM25Scorer:
         return {word: np.log((self.n - freq + 0.5) / (freq + 0.5) + 1.0) for word, freq in self.df.items()}
 
     def get_scores(self, query):
-        q_words = query.lower().replace('-', ' ').replace('/', ' ').split()
+        q_words = query.lower().split()
         scores = np.zeros(self.n)
         for doc_idx, doc in enumerate(self.corpus):
             doc_len = len(doc)
-            doc_str = ' '.join(doc)
             for word in q_words:
-                # 1. Exact Word Match (Classic BM25)
                 if word in self.idf:
                     freq = doc.count(word)
                     num = self.idf[word] * freq * (self.k1 + 1)
                     den = freq + self.k1 * (1 - self.b + self.b * (doc_len / self.avgdl))
                     scores[doc_idx] += num / den
-                
-                # 2. Substring Match Boost (for partials like 'crypto')
-                if len(word) > 3 and word in doc_str:
-                    scores[doc_idx] += 0.5 # Subtle boost for partial matches
         return scores
 
 
@@ -80,31 +66,16 @@ def _load_cache():
     if _cache["books"] is not None:
         return
 
-    # 1. Load Skeleton (The Full 3,293-book collection)
-    f_p = os.path.join(DATA_DIR, 'final_books.csv')
-    if os.path.exists(f_p):
+    # 1. Load Books (Priority: Enriched > Clean > Top)
+    e_p = os.path.join(OUTPUTS_DIR, 'books_enriched.csv')
+    c_p = os.path.join(OUTPUTS_DIR, 'books_clean.csv')
+    t_p = os.path.join(OUTPUTS_DIR, 'top_books.csv')
+    
+    csv_path = e_p if os.path.exists(e_p) else (c_p if os.path.exists(c_p) else t_p)
+    
+    if os.path.exists(csv_path):
         import pandas as pd
-        df = pd.read_csv(f_p).fillna('')
-        
-        # Mapping column names if needed (e.g., thumbnail -> cover_url)
-        if 'cover_url' not in df.columns and 'thumbnail' in df.columns:
-            df['cover_url'] = df['thumbnail']
-            
-        # 2. Overlay Enrichment (The High-Accuracy Syllabuses)
-        u_p = os.path.join(OUTPUTS_DIR, 'books_ultimate.csv')
-        if os.path.exists(u_p):
-            try:
-                du = pd.read_csv(u_p).fillna('')
-                # Merge: Take 'contents' and 'toc_source' from the Ultimate file
-                # Use 'title' as the unique key for matching
-                df = df.set_index('title')
-                du = du.set_index('title')
-                df.update(du[['contents', 'toc_source']])
-                df = df.reset_index()
-                print(f"  Merged {len(du)} high-accuracy syllabuses into the full corpus")
-            except Exception as e:
-                print(f"  Enrichment merge skipped: {e}")
-            
+        df = pd.read_csv(csv_path).fillna('')
         _cache["books"] = df.to_dict(orient='records')
         
         # Pre-compute short descriptions and fix column mapping
@@ -128,10 +99,10 @@ def _load_cache():
                     raw_cat = raw_cat.strip("[]'\"")
             b['category'] = raw_cat or "General Engineering"
             
-        print(f"  Successfully loaded the full 3,293-book library")
+        print(f"  Loaded {len(_cache['books'])} books from {os.path.basename(csv_path)}")
     else:
         _cache["books"] = []
-        print(f"CRITICAL ERROR: {f_p} not found!")
+        print(f"WARNING: No data found at {csv_path}")
 
     # 2. Load recommendations.json
     json_path = os.path.join(OUTPUTS_DIR, 'recommendations.json')
@@ -182,10 +153,6 @@ def get_books():
 
     # Pagination
     total = len(books)
-    if request.args.get('verified') == 'true':
-        books = [b for b in books if b.get('toc_source') == 'Official TOC']
-        total = len(books)
-
     start = (page - 1) * limit
     end = start + limit
     
@@ -194,40 +161,6 @@ def get_books():
         "total": total,
         "page": page,
         "pages": (total + limit - 1) // limit
-    })
-
-
-@app.route('/api/discover')
-def get_discover():
-    """Dynamic discovery feed including history and trending."""
-    viewed = request.args.getlist('viewed[]')
-    books = _cache["books"] or []
-    
-    # 1. History (if provided)
-    history = [b for b in books if b['title'] in viewed]
-    history = history[::-1][:10] # Reverse to get latest
-    
-    # 3. Domain Shelves with counts
-    all_categories = {}
-    for b in books:
-        c = b.get('category', 'Unknown')
-        all_categories[c] = all_categories.get(c, 0) + 1
-
-    domains = ["AI/ML", "Programming", "Security", "Networking"]
-    shelves = []
-    import random
-    for d in domains:
-        d_books = [b for b in books if d.lower() in str(b.get('category','')).lower()]
-        if d_books:
-            shelves.append({
-                "title": f"Explore {d}",
-                "books": random.sample(d_books, min(len(d_books), 10))
-            })
-            
-    return jsonify({
-        "history": history,
-        "shelves": shelves,
-        "categories": all_categories
     })
 
 
@@ -319,28 +252,20 @@ def get_toc():
                 if toc:
                     return jsonify({"items": toc})
                 
-                    # Priority 1: Try Open Library (Official)
-                    try:
-                        q_ol = f"title={requests.utils.quote(vinfo['title'])}&limit=1"
-                        ol_res = requests.get(f"https://openlibrary.org/search.json?{q_ol}", timeout=3).json()
-                        if ol_res.get('docs'):
-                            work_id = ol_res['docs'][0].get('key')
-                            work = requests.get(f"https://openlibrary.org{work_id}.json", timeout=3).json()
-                            toc = work.get('table_of_contents', [])
-                            if toc:
-                                items = [t.get('title') if isinstance(t, dict) else str(t) for t in toc]
-                                items = [i for i in items if is_valid_topic(i)]
-                                if items: return jsonify({"items": items[:12], "source": "Official TOC (OL)"})
-                    except: pass
-
-                    # Priority 2: Google Description Bullets
-                    desc = vinfo.get('description', '')
-                    if desc:
-                        clean_desc = re.sub('<[^<]+>', '', desc)
-                        parts = [s.strip() for s in clean_desc.split('. ') if len(s.strip()) > 15]
-                        parts = [p for p in parts if is_valid_topic(p)]
-                        if len(parts) > 0:
-                            return jsonify({"items": parts[:8], "source": "Official TOC (G)"})
+                desc = vinfo.get('description', '')
+                if desc:
+                    import re
+                    clean_desc = re.sub('<[^<]+>', '', desc)
+                    # Try to find actual bullet points if present
+                    if '•' in clean_desc:
+                        parts = [p.strip() for p in clean_desc.split('•') if len(p.strip()) > 10]
+                        return jsonify({"items": parts})
+                        
+                    # Split into sentences
+                    parts = [s.strip() for s in clean_desc.split('. ') if len(s.strip()) > 15]
+                    if len(parts) > 0:
+                        parts = [p + ('.' if not p.endswith('.') else '') for p in parts]
+                        return jsonify({"items": parts[:6]})
                         
                     if len(clean_desc) > 10:
                         return jsonify({"items": [clean_desc]})

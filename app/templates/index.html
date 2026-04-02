@@ -204,11 +204,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
   <div class="nav-item" id="nav_popularity" onclick="setSrt('popularity')"><span class="nav-icon">🔥</span>Most Popular</div>
   <div class="nav-item" id="nav_year" onclick="setSrt('year')"><span class="nav-icon">🆕</span>Newest</div>
   <div class="nav-item" id="nav_fav" onclick="showFavs()"><span class="nav-icon">❤️</span>Favorites<span class="nav-badge" id="favCount">0</span></div>
-  <div class="nav-label">Filters</div>
-  <div class="nav-item" id="verified_toggle" onclick="toggleVerified()">
-    <span class="nav-icon">✔️</span>Verified Only
-    <div id="v_check" style="margin-left:auto; width:16px; height:16px; border:1px solid var(--border); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px;"></div>
-  </div>
   <div class="nav-label">Domains</div>
   <div id="sbCats"></div>
   <div class="sidebar-footer">Press <kbd>/</kbd> to search · <kbd>Esc</kbd> to close</div>
@@ -240,11 +235,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 </div>
 
 <script>
-let BOOKS=[], RECS={}, ALL_CATS=null;
-let srt='score', cat='all', q='', activeTitle=null, showFavsMode=false, verifiedOnly=false;
+let BOOKS=[], RECS={};
+let srt='score', cat='all', q='', activeTitle=null, showFavsMode=false;
 let page=1, loading=false, hasMore=true, totalResults=0;
 let favorites = JSON.parse(localStorage.getItem('bookify_favs') || '[]');
-let viewed = JSON.parse(localStorage.getItem('bookify_viewed') || '[]');
 
 const CE={'AI/ML':'🤖','Programming':'💻','Security':'🔐','Cloud/DevOps':'☁️','Data Science':'📊','Databases':'🗄️','Electrical':'⚡','Mechanical':'⚙️','Software Eng':'🏗️','Networking':'🌐','General Engineering':'📐','Civil':'🏛️','Game/Graphics':'🎮'};
 const CCLR={'AI/ML':'#a78bfa','Programming':'#60a5fa','Security':'#f87171','Cloud/DevOps':'#34d399','Data Science':'#fb923c','Databases':'#f472b6','Electrical':'#fbbf24','Mechanical':'#94a3b8','Software Eng':'#c084fc','Networking':'#67e8f9','General Engineering':'#6a6a6a','Civil':'#a3b899','Game/Graphics':'#f9a8d4'};
@@ -274,20 +268,8 @@ async function loadPage(reset=false){
   if(reset){page=1; BOOKS=[]; hasMore=true; document.getElementById('browse').innerHTML=''; skeleton();}
 
   try {
-    if (!q && cat === 'all' && reset && !showFavsMode) {
-       // --- DISCOVERY MODE (Home Page) ---
-       const r = await fetch(`/api/discover?${viewed.map(v => `viewed[]=${encodeURIComponent(v)}`).join('&')}`);
-       const d = await r.json();
-       if (!ALL_CATS && d.categories) ALL_CATS = d.categories; // --- PERSISTENT CACHE ---
-       buildSB(ALL_CATS); 
-       renderDiscover(d);
-       loading = false;
-       return;
-    }
-
     let url = q ? `/api/search?q=${encodeURIComponent(q)}&page=${page}` : `/api/books?page=${page}`;
     if(!q && cat !== 'all') url += `&domain=${encodeURIComponent(cat)}`;
-    if(verifiedOnly) url += `&verified=true`;
     
     const r = await fetch(url);
     const data = await r.json();
@@ -297,7 +279,7 @@ async function loadPage(reset=false){
     totalResults = data.total || 0;
     hasMore = page < (data.pages || 1);
     
-    if(reset) buildSB(ALL_CATS);
+    if(reset) buildSB(data.categories); // Update sidebar if needed
     render();
     page++;
   } catch(e) {
@@ -307,38 +289,12 @@ async function loadPage(reset=false){
   }
 }
 
-function renderDiscover(d) {
-  let h = `<div class="ptitle">Welcome to Bookify 🚀</div><div class="psub">Discover curated engineering literature</div>`;
-  
-  // Update BOOKS global cache with items from discover, effectively letting us open their detail panels
-  BOOKS = [];
-  if (d.history) BOOKS.push(...d.history);
-  if (d.shelves) d.shelves.forEach(s => BOOKS.push(...s.books));
-
-  if (d.history && d.history.length > 0) {
-    h += shelf("Recently Viewed", d.history);
-  }
-  
-  if (d.shelves) {
-    d.shelves.forEach(s => {
-       h += shelf(s.title, s.books);
-    });
-  }
-  
-  document.getElementById('browse').innerHTML = h;
-  hasMore = false; // Discover is single-load for now
-}
-
-function toggleVerified() {
-  verifiedOnly = !verifiedOnly;
-  document.getElementById('v_check').innerHTML = verifiedOnly ? '✓' : '';
-  document.getElementById('v_check').style.background = verifiedOnly ? 'var(--accent)' : 'transparent';
-  document.getElementById('v_check').style.color = verifiedOnly ? '#000' : 'transparent';
-  loadPage(true);
-}
-
 // ── SIDEBAR ──
 function buildSB(counts){
+  if(!counts && BOOKS.length > 0) {
+    counts={};
+    BOOKS.forEach(b=>{if(b.category) counts[b.category]=(counts[b.category]||0)+1;});
+  }
   if(!counts) return;
   const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   document.getElementById('sbCats').innerHTML=sorted.map(([c,n])=>
@@ -364,16 +320,6 @@ function render(){
   let sub = q?`${totalResults} matches found semanticly`:cat!=='all'?`${totalResults} books in domain`:`Discover ${totalResults} technical books`;
   
   let h=`<div class="ptitle">${title}</div><div class="psub">${sub}</div>`;
-
-  // --- NEW: Category Filter Pill ---
-  if (cat !== 'all') {
-    h += `<div style="margin-bottom:20px; display:flex; gap:10px;">
-            <button class="sbtn ${verifiedOnly?'active':''}" onclick="toggleVerified()" style="font-size:12px; padding:6px 14px;">
-              ${verifiedOnly ? '✔️ Showing Verified Only' : '🔍 Filter: Verified Contents Only'}
-            </button>
-          </div>`;
-  }
-  
   h+=`<div class="matrix-grid">${BOOKS.map(bcardH).join('')}`;
   if(hasMore) h+=`<div class="sentinel" id="sentinel"><div class="loader-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div> Loading more...</div>`;
   h+=`</div>`;
@@ -416,20 +362,7 @@ function bcardH(b){
 
 // ── DETAIL PANEL ──
 function openDP(title){
-  let b=BOOKS.find(x=>x.title===title);
-  if(!b) {
-     // If not in current view, it might be in Discovery feed or similar.
-     // Fallback: we could fetch it, but for now we try to find it in the DOM data if possible.
-     return;
-  }
-
-  // Tracking History
-  if (!viewed.includes(title)) {
-     viewed.push(title);
-     if (viewed.length > 50) viewed.shift();
-     localStorage.setItem('bookify_viewed', JSON.stringify(viewed));
-  }
-
+  const b=BOOKS.find(x=>x.title===title);if(!b)return;
   activeTitle=title;closeMobile();
   document.querySelectorAll('.bc').forEach(el=>el.classList.toggle('sel',el.dataset.t===title));
   const dp=document.getElementById('dp'),dpi=document.getElementById('dpi');
@@ -486,24 +419,14 @@ function openDP(title){
         catch(e) { contents = Array.isArray(b.contents) ? b.contents : (b.contents ? [b.contents] : []); }
         
         let items = [];
-        const NOISE = ['and', 'the', 'with', 'for', 'from', 'also', 'plus', '&', 'see', 'read', 'part', 'chapter', 'section', 'this', 'that', 'they', 'our', 'will', 'are'];
         contents.forEach(c => {
           if (typeof c === 'string') {
-            let parts = c.split(/(?:<br>|\n|•|;)/)
-                         .map(s => s.trim())
-                         .filter(s => {
-                            const low = s.toLowerCase();
-                            // Discard if empty, just symbols, or purely noise
-                            return s.length > 3 && 
-                                   !NOISE.includes(low) && 
-                                   /[a-zA-Z]/.test(s) && // Must have at least one letter
-                                   !/^[\W_]+$/.test(s); // Must not be purely symbols
-                         });
+            let parts = c.split(/(?:<br>|\n|•|;)/).map(s => s.trim()).filter(s => s.length > 2);
             items.push(...parts);
           }
         });
         
-        items = items.filter(c => typeof c === 'string' && c.replace(/[^a-zA-Z]/g, '').length > 3);
+        items = items.filter(c => typeof c === 'string' && c.replace(/[^a-zA-Z]/g, '').length > 0);
 
         // Logic for labels
         let isCurated = (b.toc_source === "Curated Syllabus");
@@ -646,55 +569,21 @@ window.fetchRealTOC = async function(cid, title, author) {
      return;
   }
   
-  // Show a "Live Fetching" spinner
-  container.innerHTML = `<div style="padding:40px; text-align:center;">
-    <div class="loader-dots" style="margin:0 auto 15px;"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-    <div style="font-size:13px; color:var(--text2);">Searching live for official syllabus data...</div>
-  </div>`;
-  
   try {
      const res = await fetch(`/api/toc?title=${encodeURIComponent(title)}&author=${encodeURIComponent(author||'')}`);
-     if (res.ok) {
-        const data = await res.json();
-        if (data.items && data.items.length > 0) {
-           container.innerHTML = `
-             <div class="syl-sec">
-                <div class="syl-title">Official Table of Contents</div>
-                <div class="syl-list">
-                ${data.items.map(c => `<div class="syl-item">${esc(typeof c==='string'?c:c.title||c)}</div>`).join('')}
-                </div>
-             </div>`;
-           return;
-        }
+     if (!res.ok) throw new Error("API failed");
+     const data = await res.json();
+     if (data.items && data.items.length > 0) {
+        container.innerHTML = `
+          <div class="syl-sec">
+             <div class="syl-title">Book Contents</div>
+             <div class="syl-list">
+             ${data.items.map(c => `<div class="syl-item">${esc(typeof c==='string'?c:c.title||c)}</div>`).join('')}
+             </div>
+          </div>`;
+     } else {
+        container.innerHTML = fb;
      }
-     
-     // --- NEW: Live Wikipedia Fallback for Internet Accuracy ---
-     const coreQ = title.replace(/^(Intro|Principles|Fundamentals|Handbook|Advanced|The)\s+/i, '').split(':')[0].trim();
-     const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&origin=*&search=${encodeURIComponent(coreQ)}&limit=1`);
-     const wikiData = await wikiRes.json();
-     
-     if (wikiData[1] && wikiData[1][0]) {
-        const pageTitle = wikiData[1][0];
-        const secRes = await fetch(`https://en.wikipedia.org/w/api.php?action=parse&origin=*&page=${encodeURIComponent(pageTitle)}&prop=sections&format=json`);
-        const secData = await secRes.json();
-        let sections = secData.parse.sections.filter(s => s.level == '2').map(s => s.line);
-        const BAD = ['See also','References','Further reading','External links','Notes','History','Gallery','Geography'];
-        sections = sections.filter(s => !BAD.includes(s)).slice(0, 8);
-        
-        if (sections.length > 0) {
-           container.innerHTML = `
-             <div class="syl-sec" style="border: 1px solid rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05);">
-                <div style="font-size:12px; font-weight:700; color:#3b82f6; margin-bottom:8px; display:flex; align-items:center; gap:6px;">ℹ️ Web-Curated Subject Overview (Source: Wikipedia)</div>
-                <div class="syl-list">
-                  ${sections.map(s => `<div class="syl-item">${esc(s)}</div>`).join('')}
-                </div>
-                <p style="font-size:11px; color:var(--text3); margin-top:10px; font-style:italic;">Mapping book to its core technical subject on Wikipedia.</p>
-             </div>`;
-           return;
-        }
-     }
-     
-     container.innerHTML = fb;
   } catch(e) {
      container.innerHTML = fb;
   }
