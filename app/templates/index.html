@@ -121,7 +121,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 .badge-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
 .badge{padding:4px 12px;border-radius:20px;background:var(--glass2);font-size:10px;font-weight:700;border:1px solid var(--border);color:var(--text2);letter-spacing:0.3px}
 .vtabs{display:flex;background:var(--bg3);border-bottom:1px solid var(--border)}
-.vtab{padding:12px 20px;font-size:12px;font-weight:600;color:#fff;border-bottom:2px solid var(--accent)}
+.vtab{padding:12px 20px;font-size:12px;font-weight:600;color:var(--text2);border-bottom:2px solid transparent;cursor:pointer;transition:all .2s;}
+.vtab:hover{color:#fff;}
+.vtab.active{color:#fff;border-bottom:2px solid var(--accent);}
 .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px}
 .meta-card{background:var(--bg3);padding:14px;border-radius:var(--radius-sm);border:1px solid var(--border)}
 .meta-card .label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px}
@@ -137,6 +139,23 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 /* ── NO RESULTS ── */
 .nores{text-align:center;padding:80px 20px;color:var(--text2);font-size:15px}
 .nores .big{font-size:48px;margin-bottom:16px;display:block}
+
+/* ── LOADING SENTINEL ── */
+.sentinel{height:100px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;grid-column:1/-1}
+.loader-dots{display:flex;gap:4px}
+.dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:dotPulse 0.6s infinite alternate}
+.dot:nth-child(2){animation-delay:0.2s}
+.dot:nth-child(3){animation-delay:0.4s}
+@keyframes dotPulse{from{opacity:0.3;transform:scale(0.8)}to{opacity:1;transform:scale(1.2)}}
+
+/* ── SYLLABUS SECTION ── */
+.syl-sec{background:var(--bg3);border-radius:12px;padding:20px;margin-bottom:24px;border:1px solid var(--border);animation:fadeUp .4s ease both}
+.syl-title{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.syl-title::before{content:'📋';font-size:15px}
+.syl-list{display:grid;gap:8px}
+.syl-item{font-size:13px;color:var(--text2);display:flex;gap:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);line-height:1.5}
+.syl-item:last-child{border:0}
+.syl-item::before{content:'•';color:var(--accent);font-weight:900}
 
 /* ── ANIMATIONS ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -218,6 +237,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 <script>
 let BOOKS=[], RECS={};
 let srt='score', cat='all', q='', activeTitle=null, showFavsMode=false;
+let page=1, loading=false, hasMore=true, totalResults=0;
 let favorites = JSON.parse(localStorage.getItem('bookify_favs') || '[]');
 
 const CE={'AI/ML':'🤖','Programming':'💻','Security':'🔐','Cloud/DevOps':'☁️','Data Science':'📊','Databases':'🗄️','Electrical':'⚡','Mechanical':'⚙️','Software Eng':'🏗️','Networking':'🌐','General Engineering':'📐','Civil':'🏛️','Game/Graphics':'🎮'};
@@ -233,99 +253,87 @@ function skeleton(){
 async function startApp(){
   skeleton();
   try{
-    const [rb,rr]=await Promise.all([fetch('/api/books'),fetch('/api/recs')]);
-    BOOKS=await rb.json(); RECS=await rr.json();
-    if(BOOKS.length>0){buildSB();render();updateFavCount();}
-    else document.getElementById('browse').innerHTML='<div class="nores"><span class="big">📭</span>No books found. Run the ML pipeline first.</div>';
+    const rr = await fetch('/api/recs');
+    RECS = await rr.json();
+    loadPage(true); // Initial load
+    updateFavCount();
   }catch(e){
-    document.getElementById('browse').innerHTML='<div class="nores"><span class="big">⚡</span>Connection failed. Start the Flask server first.<br><code style="color:var(--text3);font-size:12px;margin-top:8px;display:block">python app/app.py</code></div>';
+    console.error("Init error", e);
+  }
+}
+
+async function loadPage(reset=false){
+  if(loading || (!hasMore && !reset)) return;
+  loading=true;
+  if(reset){page=1; BOOKS=[]; hasMore=true; document.getElementById('browse').innerHTML=''; skeleton();}
+
+  try {
+    let url = q ? `/api/search?q=${encodeURIComponent(q)}&page=${page}` : `/api/books?page=${page}`;
+    if(!q && cat !== 'all') url += `&domain=${encodeURIComponent(cat)}`;
+    
+    const r = await fetch(url);
+    const data = await r.json();
+    
+    const newBooks = data.books || [];
+    BOOKS = reset ? newBooks : [...BOOKS, ...newBooks];
+    totalResults = data.total || 0;
+    hasMore = page < (data.pages || 1);
+    
+    if(reset) buildSB(data.categories); // Update sidebar if needed
+    render();
+    page++;
+  } catch(e) {
+    console.error("Load error", e);
+  } finally {
+    loading=false;
   }
 }
 
 // ── SIDEBAR ──
-function buildSB(){
-  const cats={};
-  BOOKS.forEach(b=>{if(b.category){cats[b.category]=(cats[b.category]||0)+1;}});
-  const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+function buildSB(counts){
+  if(!counts && BOOKS.length > 0) {
+    counts={};
+    BOOKS.forEach(b=>{if(b.category) counts[b.category]=(counts[b.category]||0)+1;});
+  }
+  if(!counts) return;
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   document.getElementById('sbCats').innerHTML=sorted.map(([c,n])=>
-    `<div class="cpill" data-c="${c}" onclick="setCat('${c}',this)"><div class="cdot" style="background:${CCLR[c]||'#fff'}"></div>${CE[c]||'📐'} ${c}<span class="nav-badge">${n}</span></div>`
+    `<div class="cpill${cat===c?' active':''}" data-c="${c}" onclick="setCat('${c}',this)"><div class="cdot" style="background:${CCLR[c]||'#fff'}"></div>${CE[c]||'📐'} ${c}</div>`
   ).join('');
 }
 
-// ── SEARCH ──
-function fuzzyMatch(text,query){
-  text=(text||'').toLowerCase();query=(query||'').toLowerCase();
-  if(!query) return 0;
-  if(text === query) return 1.0;
-  if(text.includes(query)) {
-    return 0.70 + (query.length / text.length) * 0.25;
-  }
-  const words=text.split(/\s+/);
-  let maxWordScore = 0;
-  for(const w of words){
-    if(w.startsWith(query) || query.startsWith(w)) {
-      const matchLen = Math.min(w.length, query.length);
-      const score = 0.50 + (matchLen / Math.max(w.length, query.length)) * 0.40;
-      if (score > maxWordScore) maxWordScore = score;
-    }
-  }
-  if (maxWordScore > 0) return maxWordScore;
-  const qWords=query.split(/\s+/).filter(w=>w.length>1);
-  if(qWords.length>1){
-    const matched=qWords.filter(qw=>text.includes(qw));
-    if(matched.length>0) return 0.30 + (matched.length/qWords.length) * 0.40;
-  }
-  return 0;
-}
-
-function getFilteredBooks(){
-  let list=BOOKS.filter(b=>{
-    if(showFavsMode&&!favorites.includes(b.title)) return false;
-    if(cat!=='all'&&b.category!==cat) return false;
-    if(!q) return true;
-    const score=Math.max(fuzzyMatch(b.title||'',q),fuzzyMatch(b.author||'',q),fuzzyMatch(b.category||'',q));
-    b._searchScore=score;
-    return score>0.3;
-  });
-  if(q){
-    list.sort((a,b)=>(b._searchScore||0)-(a._searchScore||0));
-  } else {
-    list.sort((a,b)=>{
-      if(srt==='score') return b.score-a.score;
-      if(srt==='rating') return (b.rating||0)-(a.rating||0);
-      if(srt==='popularity') return (b.ratings_count||0)-(a.ratings_count||0);
-      if(srt==='year') return (b.year||0)-(a.year||0);
-      return 0;
-    });
-  }
-  return list;
-}
+// ── SEARCH ── (Redundant frontend logic removed)
 
 // ── RENDER ──
 function render(){
-  const books=getFilteredBooks();
   const br=document.getElementById('browse');
-  br.scrollTo({top:0,behavior:'smooth'});
+  if(page === 2) br.scrollTo({top:0,behavior:'smooth'}); // Only scroll on new cat/search
 
   if(showFavsMode){
-    if(books.length===0) br.innerHTML='<div class="ptitle">❤️ Favorites</div><div class="psub">No favorites yet. Click the heart on any book to save it.</div>';
-    else br.innerHTML=`<div class="ptitle">❤️ Favorites</div><div class="psub">${books.length} saved</div><div class="matrix-grid">${books.map(bcardH).join('')}</div>`;
-  } else if(q||cat!=='all'||srt!=='score'){
-    let title=q?`Results for "${esc(q)}"`:cat!=='all'?`${CE[cat]||'📚'} ${cat}`:`Sorted by ${srt}`;
-    br.innerHTML=`<div class="ptitle">${title}</div><div class="psub">${books.length} books</div>${books.length?`<div class="matrix-grid">${books.map(bcardH).join('')}</div>`:'<div class="nores"><span class="big">🔍</span>No books match your search.</div>'}`;
-  } else {
-    const byCat={};
-    BOOKS.forEach(b=>{if(!byCat[b.category])byCat[b.category]=[];byCat[b.category].push(b);});
-    let h=`<div class="ptitle">Good ${greet()} 👋</div><div class="psub">${BOOKS.length} engineering books curated by AI</div>`;
-    h+=shelf('🏆 Top Picks',[...BOOKS].sort((a,b)=>b.score-a.score).slice(0,12));
-    if(favorites.length>0) h+=shelf('❤️ Your Favorites',BOOKS.filter(b=>favorites.includes(b.title)).slice(0,12));
-    Object.entries(byCat).sort((a,b)=>b[1].length-a[1].length).forEach(([c,bs])=>{
-      h+=shelf(`${CE[c]||'📚'} ${c}`,[...bs].sort((a,b)=>b.score-a.score).slice(0,12));
-    });
-    br.innerHTML=h;
+    const favs = BOOKS.filter(b => favorites.includes(b.title));
+    if(favs.length===0) br.innerHTML='<div class="ptitle">❤️ Favorites</div><div class="psub">No favorites yet.</div>';
+    else br.innerHTML=`<div class="ptitle">❤️ Favorites</div><div class="psub">${favs.length} saved</div><div class="matrix-grid">${favs.map(bcardH).join('')}</div>`;
+    return;
   }
+
+  let title=q?`Results for "${esc(q)}"`:cat!=='all'?`${CE[cat]||'📚'} ${cat}`:`Welcome to Bookify 🚀`;
+  let sub = q?`${totalResults} matches found semanticly`:cat!=='all'?`${totalResults} books in domain`:`Discover ${totalResults} technical books`;
+  
+  let h=`<div class="ptitle">${title}</div><div class="psub">${sub}</div>`;
+  h+=`<div class="matrix-grid">${BOOKS.map(bcardH).join('')}`;
+  if(hasMore) h+=`<div class="sentinel" id="sentinel"><div class="loader-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div> Loading more...</div>`;
+  h+=`</div>`;
+  
+  br.innerHTML=h;
+  
+  const sent = document.getElementById('sentinel');
+  if(sent) scrollObs.observe(sent);
   br.querySelectorAll('.bcov[data-title]').forEach(w=>obs.observe(w));
 }
+
+const scrollObs = new IntersectionObserver(entries => {
+  if(entries[0].isIntersecting && !loading && hasMore) loadPage();
+}, { threshold: 0.1 });
 
 function shelf(t,bs){return `<div class="sec"><div class="sect">${t}</div><div class="shelf">${bs.map(bcardH).join('')}</div></div>`;}
 
@@ -339,11 +347,8 @@ function bcardH(b){
   const sel=b.title===activeTitle?' sel':'';
   const fav=favorites.includes(b.title);
   let badgeHtml = '';
-  if (q) {
-    const scorePct = Math.round((b._searchScore || 0) * 100);
-    if (scorePct > 0) {
-      badgeHtml = `<div class="score-badge">${scorePct}% match</div>`;
-    }
+  if (b.match_pct) {
+    badgeHtml = `<div class="score-badge">${b.match_pct}% match</div>`;
   }
   return `<div class="bc${sel}" data-t="${ea(b.title)}" onclick="openDP(this.dataset.t)">
     <div class="bcov" data-title="${ea(b.title)}" data-author="${ea(b.author)}"><div class="bshim"></div><div class="bemo">${CE[b.category]||'📚'}</div>
@@ -386,9 +391,14 @@ function openDP(title){
       <a href="https://openlibrary.org/search?q=${encodeURIComponent(b.title)}" target="_blank" class="btn-secondary">📖 Open Library</a>
       <button class="btn-secondary" onclick="toggleFav('${ea(b.title)}');openDP('${ea(b.title)}')">${fav?'💔 Unfavorite':'❤️ Favorite'}</button>
     </div>
-    <div class="vtabs"><div class="vtab">Description & Recommendations</div></div>
-    <div style="padding:24px 28px">
+    <div class="vtabs">
+      <div id="btn-tab-desc" class="vtab active" onclick="document.getElementById('tab-desc').style.display='block';document.getElementById('tab-toc').style.display='none';this.classList.add('active');document.getElementById('btn-tab-toc').classList.remove('active');">Description & Recs</div>
+      <div id="btn-tab-toc" class="vtab" onclick="document.getElementById('tab-toc').style.display='block';document.getElementById('tab-desc').style.display='none';this.classList.add('active');document.getElementById('btn-tab-desc').classList.remove('active');">Contents</div>
+    </div>
+    
+    <div id="tab-desc" style="padding:24px 28px; display:block;">
       <p style="color:var(--text2);line-height:1.8;font-size:14px;margin-bottom:24px">${esc(b.desc_short)||'No description available.'}${b.desc_short?'...':''}</p>
+      
       <div class="meta-grid">
         <div class="meta-card"><div class="label">Publisher</div><div class="value">${esc(b.publisher)}</div></div>
         <div class="meta-card"><div class="label">Source</div><div class="value">${esc(b.source||b.platform)}</div></div>
@@ -400,6 +410,59 @@ function openDP(title){
         <div style="font-size:11px;color:var(--text2);margin-top:2px">${esc(r.author)} · ${starsHTML(r.rating)} ${r.rating}</div>
         <div style="margin-top:4px"><span style="font-size:10px;color:var(--accent);font-weight:700">${Math.min(99, Math.round(65 + r.similarity * 120))}% match</span></div></div>
       </div>`).join('')}`:''}
+    </div>
+
+    <div id="tab-toc" style="padding:24px 28px; display:none;">
+      ${(() => {
+        let contents = [];
+        try { if(b.contents) contents = JSON.parse(b.contents); } 
+        catch(e) { contents = Array.isArray(b.contents) ? b.contents : (b.contents ? [b.contents] : []); }
+        
+        let items = [];
+        contents.forEach(c => {
+          if (typeof c === 'string') {
+            let parts = c.split(/(?:<br>|\n|•|;)/).map(s => s.trim()).filter(s => s.length > 2);
+            items.push(...parts);
+          }
+        });
+        
+        items = items.filter(c => typeof c === 'string' && c.replace(/[^a-zA-Z]/g, '').length > 0);
+
+        // Logic for labels
+        let isCurated = (b.toc_source === "Curated Syllabus");
+        let isOfficial = (b.toc_source === "Official TOC");
+
+        if (items.length > 0) {
+          let header = isOfficial ? `<div class="syl-title" style="color:var(--accent);">✔️ Official Table of Contents</div>` : 
+                       isCurated ? `<div class="syl-title" style="color:var(--blue);">ℹ️ Curated Syllabus</div>` :
+                       `<div class="syl-title">Book Contents</div>`;
+          
+          let subNote = isCurated ? `<p style="font-size:11px; color:var(--text3); margin-top:-10px; margin-bottom:15px; font-style:italic;">Note: This curated syllabus matches the book's core technical focus.</p>` : '';
+
+          return `
+            <div class="syl-sec" style="${isCurated ? 'border-color:rgba(59,130,246,0.2); background:rgba(59,130,246,0.02);' : ''}">
+              ${header}
+              ${subNote}
+              <div class="syl-list">
+                ${items.map(c => `<div class="syl-item">${esc(c)}</div>`).join('')}
+              </div>
+            </div>`;
+        } else {
+          let cid = 'toc_' + Math.floor(Math.random() * 1000000);
+          setTimeout(() => { if (typeof window.fetchRealTOC === 'function') window.fetchRealTOC(cid, b.title, b.author); }, 10);
+          return `
+            <div id="${cid}">
+              <div class="syl-sec" style="text-align:center; padding:40px 20px; border:1px solid var(--border); background:var(--bg3);">
+                <div style="display:flex; justify-content:center; gap:6px; margin-bottom:16px;">
+                  <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                </div>
+                <div style="font-size:12px; color:var(--text3); display:flex; align-items:center; justify-content:center; gap:6px;">
+                   🌐 Fetching live official contents from the web...
+                </div>
+              </div>
+            </div>`;
+        }
+      })()}
     </div>`;
 
   getCover(b.title,b.author).then(url=>{if(url){applyImg(document.getElementById('dpCovWrap'),url,'.bshim','.bemo');document.getElementById('vbg').style.backgroundImage=`url('${url}')`;}else{const s=document.querySelector('#dpCovWrap .bshim');if(s)s.classList.add('gone');const e=document.querySelector('#dpCovWrap .bemo');if(e)e.classList.add('show');}});
@@ -409,10 +472,10 @@ function closeDP(){document.getElementById('dp').classList.add('closed');activeT
 
 // ── NAVIGATION ──
 function clearActive(){document.querySelectorAll('.nav-item,.cpill').forEach(p=>p.classList.remove('active'));}
-function setCat(c,el){cat=c;q='';showFavsMode=false;clearActive();if(el)el.classList.add('active');render();}
-function showHome(){cat='all';q='';srt='score';showFavsMode=false;document.getElementById('srch').value='';clearActive();document.getElementById('homeBtn').classList.add('active');['sb_score','sb_rating','sb_popularity'].forEach((id,i)=>document.getElementById(id).classList.toggle('active',i===0));render();}
+function setCat(c,el){cat=c;q='';showFavsMode=false;clearActive();if(el)el.classList.add('active');loadPage(true);}
+function showHome(){cat='all';q='';srt='score';showFavsMode=false;document.getElementById('srch').value='';clearActive();document.getElementById('homeBtn').classList.add('active');loadPage(true);}
 function showFavs(){showFavsMode=true;cat='all';q='';clearActive();document.getElementById('nav_fav').classList.add('active');render();}
-function setSrt(s){srt=s;showFavsMode=false;clearActive();const navId='nav_'+s;if(document.getElementById(navId))document.getElementById(navId).classList.add('active');['sb_score','sb_rating','sb_popularity'].forEach(id=>document.getElementById(id).classList.toggle('active',id==='sb_'+s));render();}
+function setSrt(s){srt=s;showFavsMode=false;clearActive();loadPage(true);}
 function focusSearch(){document.getElementById('srch').focus();clearActive();document.getElementById('searchBtn').classList.add('active');}
 
 // ── FAVORITES ──
@@ -465,8 +528,66 @@ function greet(){const h=new Date().getHours();return h<12?'morning':h<17?'after
 // ── SEARCH INPUT ──
 let dt;
 document.getElementById('srch').addEventListener('input',e=>{
-  q=e.target.value.trim();showFavsMode=false;clearTimeout(dt);dt=setTimeout(render,200);
+  const val = e.target.value.trim();
+  if(val === q) return;
+  q=val;
+  showFavsMode=false;
+  clearTimeout(dt);
+  dt=setTimeout(() => loadPage(true), 400);
 });
+
+window.fetchRealTOC = async function(cid, title, author) {
+  const container = document.getElementById(cid);
+  if (!container) return;
+  
+  const fb = `
+    <div class="syl-sec" style="border: 1px solid rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05);">
+      <div style="font-size:12px; font-weight:700; color:#3b82f6; margin-bottom:8px; display:flex; align-items:center; gap:6px;">ℹ️ Expected Contents</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.5;">Official chapter details are missing for this title. Below are the expected core topics covered in this domain. Please check external sources for specific details.</p>
+      <div class="syl-list">
+        <div class="syl-item">Introduction & Foundational Concepts</div>
+        <div class="syl-item">Core Principles & Architecture</div>
+        <div class="syl-item">Advanced Techniques & Methodologies</div>
+        <div class="syl-item">Practical Case Studies & Applications</div>
+        <div class="syl-item">Best Practices & Future Trends</div>
+      </div>
+    </div>`;
+
+  if (!navigator.onLine) {
+     container.innerHTML = `
+      <div class="syl-sec" style="border: 1px solid rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05);">
+        <div style="font-size:12px; font-weight:700; color:#3b82f6; margin-bottom:8px; display:flex; align-items:center; gap:6px;">ℹ️ Expected Contents (Offline)</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.5;">Cannot reach web for live contents. Below is the expected syllabus. Please check external sources for specific details.</p>
+        <div class="syl-list">
+          <div class="syl-item">Introduction & Foundational Concepts</div>
+          <div class="syl-item">Core Principles & Architecture</div>
+          <div class="syl-item">Advanced Techniques & Methodologies</div>
+          <div class="syl-item">Practical Case Studies & Applications</div>
+          <div class="syl-item">Best Practices & Future Trends</div>
+        </div>
+      </div>`;
+     return;
+  }
+  
+  try {
+     const res = await fetch(`/api/toc?title=${encodeURIComponent(title)}&author=${encodeURIComponent(author||'')}`);
+     if (!res.ok) throw new Error("API failed");
+     const data = await res.json();
+     if (data.items && data.items.length > 0) {
+        container.innerHTML = `
+          <div class="syl-sec">
+             <div class="syl-title">Book Contents</div>
+             <div class="syl-list">
+             ${data.items.map(c => `<div class="syl-item">${esc(typeof c==='string'?c:c.title||c)}</div>`).join('')}
+             </div>
+          </div>`;
+     } else {
+        container.innerHTML = fb;
+     }
+  } catch(e) {
+     container.innerHTML = fb;
+  }
+};
 
 startApp();
 </script>
