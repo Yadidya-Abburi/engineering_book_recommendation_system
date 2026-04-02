@@ -33,7 +33,6 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
-test_results.txt
 
 # app/index.html is intentionally tracked (distributable self-contained app)
 # Rebuild it with: python scripts/build_app.py --skip-covers
